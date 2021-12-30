@@ -2,8 +2,7 @@ import os
 os.system('apt-get install libxml2')
 os.system('apt-get install libxml2-dev')
 
-os.mkdir('/content/spxml/')
-os.system('cp -r /content/gdrive/MyDrive/Colab\ Notebooks/IDAProject/ProjectCode/XMLReader/* /content/spxml/')
+os.system('mv /content/ECGREader/spxml /content/')
 
 os.chdir('spxml')
 os.system('python3  setup.py install --user')
