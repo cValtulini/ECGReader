@@ -7,7 +7,7 @@ print("Testing Library")
 
 import SPxml
 
-file_path = "/spxml/xml/example0.xml"
+file_path = "./spxml/xml/example0.xml"
 ecg = SPxml.getLeads(file_path)
 
 print("List of leads in ECG:")
