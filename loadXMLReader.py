@@ -1,8 +1,12 @@
+"""
+Install the XMLReader in the `spxml` folder
+Adds the installation directory to the system path
+"""
 import os
 os.system('apt-get install libxml2')
 os.system('apt-get install libxml2-dev')
 
-os.system('mv /content/ECGREader/spxml /content/')
+os.system('mv /ECGREader/spxml .')
 
 os.chdir('spxml')
 os.system('python3  setup.py install --user')
