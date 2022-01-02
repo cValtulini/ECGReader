@@ -1,13 +1,13 @@
 # ECGReader
-Authors:
-Colosio Enrico
-Valtulini Claudio
+Authors: <br>
+Colosio Enrico <br>
+Valtulini Claudio <br>
 
-Supervisors:
-Prof. Signoroni Alberto
-Dr. Savardi Mattia
+Supervisors: <br>
+Prof. Signoroni Alberto <br>
+Dr. Savardi Mattia <br>
 
-UniBS
-A.A. 2021/2022
+UniBS <br>
+A.A. 2021/2022 <br>
 
 AI-based Paper Format ECG Reader
