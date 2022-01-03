@@ -55,7 +55,7 @@ def renameXMLFiles(path):
 
 
 # Main Code Execution
-_, data_path = arvg
+_, data_path = argv
 
 # Copy data into local content folder
 os.system(f'cp {data_path} /content/')
