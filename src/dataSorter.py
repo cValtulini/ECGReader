@@ -32,12 +32,12 @@ def renameXMLFiles(path):
 
             name_initials = []
             for substring in parse_filename[1].split('_'):
-                name_initials.append(substring[0])
+                if len(substring): name_initials.append(substring[0].upper())
             for substring in parse_filename[2].split('_'):
-                name_initials.append(substring[0])
+                if len(substring): name_initials.append(substring[0].upper())
 
             new_filename.append(''.join(name_initials))
-            new_filename.append(parse_filename[0])
+            new_filename.append(parse_filename[0].upper())
             
             date = []
             for substring in parse_filename[3].split('_')[0].split('-'):
