@@ -36,16 +36,16 @@ def renameXMLFiles(path):
             for substring in parse_filename[2].split('_'):
                 name_initials.append(substring[0])
 
-            new_filename.append(name_initials.join())
+            new_filename.append(''.join(name_initials))
             new_filename.append(parse_filename[0])
             
             date = []
             for substring in parse_filename[3].split('_')[0].split('-'):
                 date.insert(0, substring)
             date[3] = date[2][2]+date[2][3]
-            new_filename.append(date.join())
+            new_filename.append(''.join(date))
 
-            os.rename(file_path, path+'/'+new_filename.join('_')+'.xml')  
+            os.rename(file_path, path+'/'+'_'.join(new_filename)+'.xml')  
 
         elif file.is_dir:
             print(f'Found subdirectory: {file.path}')
