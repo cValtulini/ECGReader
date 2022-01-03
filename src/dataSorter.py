@@ -3,7 +3,7 @@ This module is useful to handle our files to make sure that pdf and xml name cor
 """
 from sys import argv
 import os
-
+from tqdm import *
 
 """
 Renames XML files into the new name format
@@ -16,8 +16,8 @@ def renameXMLFiles(path):
     directory_list = os.scandir(path)
     
     print('-' * 32)
-    print(f'Iterating over {path} content...')
-    for file in directory_list:
+    print(f'Iterating over {path} to rename XML files...')
+    for file in tqdm(directory_list):
         if file.is_file:
             file_path = file.path
 
@@ -42,7 +42,7 @@ def renameXMLFiles(path):
             date = []
             for substring in parse_filename[3].split('_')[0].split('-'):
                 date.insert(0, substring)
-            date[3] = date[2][2]+date[2][3]
+            date[2] = date[2][2]+date[2][3]
             new_filename.append(''.join(date))
 
             os.rename(file_path, path+'/'+'_'.join(new_filename)+'.xml')  
@@ -50,7 +50,7 @@ def renameXMLFiles(path):
         elif file.is_dir:
             print(f'Found subdirectory: {file.path}')
     
-    print('XML renamed')
+    print('All XML files renamed')
     print('-' * 32)
 
 
