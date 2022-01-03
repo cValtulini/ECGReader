@@ -1,7 +1,7 @@
 """
 This module is useful to handle our files to make sure that pdf and xml name corresponds
 """
-from google.colab import drive
+from sys import argv
 import os
 
 
@@ -55,10 +55,7 @@ def renameXMLFiles(path):
 
 
 # Main Code Execution
-
-# Mount google drive to retrieve data
-drive.mount('/content/drive')
-data_path = '/content/drive/MyDrive/Colab Notebooks/IDAProject/data'
+_, data_path = arvg
 
 # Copy data into local content folder
 os.system(f'cp {data_path} /content/')
