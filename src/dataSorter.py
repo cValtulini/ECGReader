@@ -58,7 +58,7 @@ def renameXMLFiles(path):
 _, data_path = argv
 
 # Copy data into local content folder
-os.system(f'cp {data_path} /content/')
+os.system(f'cp -r {data_path} /content/')
 
 # Rename XML files
 renameXMLFiles('/content/data/xml')
