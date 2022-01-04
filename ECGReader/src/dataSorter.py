@@ -8,6 +8,8 @@ import pdfplumber
 from PyPDF2 import PdfFileWriter, PdfFileReader
 
 
+# Multiplies the '-' character that separates sections of outputs
+# for some functions
 _string_mult = 40
 
 
@@ -22,7 +24,7 @@ def renameXMLFiles(path):
     # Creates iterator over directory content
     directory_list = os.scandir(path)
     
-    print('-' * 32)
+    print('-' * _string_mult)
     print(f'Iterating over {path} to rename XML files...')
     for file in directory_list:
         if file.is_file():
@@ -56,7 +58,7 @@ def renameXMLFiles(path):
             print(f'Ignored')
     
     print('All XML files renamed.')
-    print('-' * 32)
+    print('-' * _string_mult)
 
 
 def pdfPatientIDExtractor(path):
@@ -82,7 +84,10 @@ def pdfPatientIDExtractor(path):
         print(f'pID not found for: {path}')
         return 'NotFound'+str(random.randint(0, 100))
 
-def MultipagesPdfPatientCodeNameExtractor(path,code_bottom=793.0860326260371,break_bottom=366.121624373963):
+
+def MultipagesPdfPatientCodeNameExtractor(path,
+                                        code_bottom=793.0860326260371,
+                                        break_bottom=366.121624373963):
     """
     MultipagesPdfPatientCodeNameExtractor extracts patient codes from '.pdf' files of ECGs composed by many pages.
 
@@ -121,7 +126,7 @@ def renamePDFFiles(path):
     
     directory_list = os.scandir(path)
 
-    print('-' * 32)
+    print('-' * _string_mult)
     print(f'Iterating over {path} to rename PDF files...')
     for sub_directory in directory_list:
 
