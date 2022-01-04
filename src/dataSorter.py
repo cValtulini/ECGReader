@@ -102,7 +102,8 @@ def renamePDFFiles(path):
                     new_filename.append(
                         pdfPatientIDExtractor(file.path).upper()
                         )
-                    new_filename.append(sub_directory.name)
+                    # subdirectory name is 'ECG DATE' we only keep 'DATE'
+                    new_filename.append(sub_directory.name.split(' ')[1])
 
                     os.rename(file.path, path+'/'+'_'.join(new_filename)+'.pdf')
 
