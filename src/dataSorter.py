@@ -19,7 +19,7 @@ def renameXMLFiles(path):
     print('-' * 32)
     print(f'Iterating over {path} to rename XML files...')
     for file in directory_list:
-        if file.is_file:
+        if file.is_file():
             # Produces a list containing
             # ['patient ID', 'surname', 'name', 'aaaa-mm-dd_hh-mm-ss']
             # surname and name may have the structure 'sur1_sur2' 'name1_name2'
@@ -45,7 +45,7 @@ def renameXMLFiles(path):
 
             os.rename(file.path, path+'/'+'_'.join(new_filename)+'.xml')  
 
-        elif file.is_dir:
+        elif file.is_dir():
             print(f'Found subdirectory: {file.path}')
             print(f'Ignored')
     
@@ -91,10 +91,10 @@ def renamePDFFiles(path):
     print(f'Iterating over {path} to rename PDF files...')
     for sub_directory in directory_list:
         # We know that files are organized into subfolder identified by dates
-        if sub_directory.is_dir:
+        if sub_directory.is_dir():
             sub_dir_list = os.scandir(sub_directory.path)
             for file in sub_dir_list:
-                if file.is_file:
+                if file.is_file():
                     # Original filename is 'initials birthdate.pdf'
                     parse_filename = file.name.split(' ')
 
@@ -106,14 +106,14 @@ def renamePDFFiles(path):
 
                     os.rename(file.path, path+'/'+'_'.join(new_filename)+'.pdf')
 
-                elif file.is_dir:  
+                elif file.is_dir():  
                     print(f'Found subdirectory: {file.path}')
                     print(f'Ignored')
             
             os.rmdir(sub_directory.path)
 
         # We ignore everything that is not a subfolder in the main folder
-        elif sub_directory.is_file:
+        elif sub_directory.is_file():
             print(f'File found: {sub_directory.path}')
             print('Ignored')
 
@@ -133,4 +133,5 @@ if __name__ == '__main__':
 
     # Rename PDF files
     renamePDFFiles('/content/data/pdf')
-    # Find association name + data
+    
+    # Find association xml + pdf
