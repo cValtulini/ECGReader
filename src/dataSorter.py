@@ -3,6 +3,7 @@ This module is useful to handle our files to make sure that pdf and xml name cor
 """
 from sys import argv
 import os
+import random
 
 def renameXMLFiles(path):
     """
@@ -73,7 +74,7 @@ def pdfPatientIDExtractor(path):
                 return dictionary['text']
 
         print(f'pID not found for: {path}')
-        return 'NotFound'+str(randint(0, 100))
+        return 'NotFound'+str(random.randint(0, 100))
 
 
 def renamePDFFiles(path):
