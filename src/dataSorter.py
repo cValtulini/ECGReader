@@ -3,8 +3,6 @@ This module is useful to handle our files to make sure that pdf and xml name cor
 """
 from sys import argv
 import os
-import pdfplumber
-
 
 def renameXMLFiles(path):
     """
@@ -121,6 +119,7 @@ if __name__ == '__main__':
 
     # Install pdfplumber to retrieve patientID from files
     os.system('pip install pdfplumber')
+    import pdfplumber
 
     # Copy data into local content folder
     os.system(f'cp -r {data_path} /content/')
