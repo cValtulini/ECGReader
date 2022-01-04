@@ -4,6 +4,7 @@ This module is useful to handle our files to make sure that pdf and xml name cor
 from sys import argv
 import os
 import random
+from pdf2jpg import pdf2jpg
 import pdfplumber
 from PyPDF2 import PdfFileWriter, PdfFileReader
 
@@ -85,11 +86,11 @@ def pdfPatientIDExtractor(path):
         return 'NotFound'+str(random.randint(0, 100))
 
 
-def MultipagesPdfPatientCodeNameExtractor(path,
+def multipagesPdfPatientIDNameExtractor(path,
                                         code_bottom=793.0860326260371,
                                         break_bottom=366.121624373963):
     """
-    MultipagesPdfPatientCodeNameExtractor extracts patient codes from '.pdf' files of ECGs composed by many pages.
+    multipagesPdfPatientIDNameExtractor extracts patient codes from '.pdf' files of ECGs composed by many pages.
 
     :param path: should be a full file path comprehensive of '.pdf'
     :param code_bottom: is the pdf coordinate at which the function finds the patient code
@@ -135,7 +136,7 @@ def renamePDFFiles(path):
             if sub_directory.name == 'ECG 301221':
                 sub_dir_list = os.scandir(sub_directory.path)
                 for file in sub_dir_list:
-                    patient_ids, names= MultipagesPdfPatientCodeNameExtractor(file.path)
+                    patient_ids, names= multipagesPdfPatientIDNameExtractor(file.path)
                     
                     inputpdf = PdfFileReader(open(file.path, "rb"))
                     for i in range(inputpdf.numPages):
@@ -226,6 +227,29 @@ def matchesFinder(path_to_jpg, path_to_xml):
     print('-' * _string_mult)
 
 
+def convertPdfToJpg(path):
+    """
+    Expects the `path` folder to be divided into `/matches` and `/unmatched`
+    converts pdf to jpg and puts into `/jpg`
+    """
+    # Gets folders file list
+    matches_pdf = os.scandir(f'{path}/matches')
+    unmatched_pdf = os.scandir(f'{path}/unmatched')
+
+    os.system(f'mkdir {path}/jpg')
+    os.system(f'mkdir {path}/jpg/matches')
+    os.system(f'mkdir {path}/jpg/unmatched')
+
+    for pdf in matches_pdf:
+        pdf2jpg.convert_pdf2jpg(pdf.path, out_path)
+
+
+    os.chdir(path)
+    os.rename(f'/jpg', '../jpg')
+    os.chdir('/content')
+    os.rmdir(path)
+
+
 if __name__ == '__main__':
     _, data_path = argv
 
@@ -239,8 +263,7 @@ if __name__ == '__main__':
     renamePDFFiles('/content/data/pdf')
     
     # Convert PDF files to JPEG
+    # convertPdfToJpg(f'{data_path}/pdf')
 
     # Find matches between xml / jpg and organize files
     # matchesFinder('content/data/jpg', 'content/data/xml')
-
-    print('kek')
