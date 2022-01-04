@@ -72,6 +72,9 @@ def pdfPatientIDExtractor(path):
             if dictionary['bottom'] == 793.0860326260371:
                 return dictionary['text']
 
+        print(f'pID not found for: {path}')
+        return 'NotFound'+str(randint(0, 100))
+
 
 def renamePDFFiles(path):
     """
