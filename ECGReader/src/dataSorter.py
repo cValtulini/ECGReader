@@ -126,46 +126,46 @@ def renamePDFFiles(path):
     print('-' * _string_mult)
 
 
-def matchesFinder(path_to_jpeg, path_to_xml):
+def matchesFinder(path_to_jpg, path_to_xml):
     """
     Find matches between files in the two folder, excluding file extensions.
     Reorganize files into `matches` and `unmatched` folders.
     """
     # List files in the two directories keeping only the filename without
     # extension
-    jpeg_list = [file.path.split('.')[0].split('/')[-1]
-                for file in os.scandir(path_to_jpeg)]
+    jpg_list = [file.path.split('.')[0].split('/')[-1]
+                for file in os.scandir(path_to_jpg)]
     xml_list = [file.path.split('.')[0].split('/')[-1]
                 for file in os.scandir(path_to_xml)]
 
     print('-' * _string_mult)
     print('Finding matches:')
     # Finds the elements in both lists
-    matches = set(jpeg_list).intersection(xml_list)
+    matches = set(jpg_list).intersection(xml_list)
     print(f'There are {len(matches)} matches in data.')
-    print(f'There are {len(jpeg_list)} jpeg files.')
+    print(f'There are {len(jpg_list)} jpg files.')
     print(f'There are {len(xml_list)} xml files.')
 
     # Creates folders to put matches and unmatched files into
-    os.mkdir(f'{path_to_jpeg}/matches')
-    os.mkdir(f'{path_to_jpeg}/unmatched')
+    os.mkdir(f'{path_to_jpg}/matches')
+    os.mkdir(f'{path_to_jpg}/unmatched')
     os.mkdir(f'{path_to_xml}/matches')
     os.mkdir(f'{path_to_xml}/unmatched')
 
     # Moves matches into the proper folder
     for filename in matches:
-        jpeg_src = f'{path_to_jpeg}/{filename}.jpeg'
-        jpeg_dst = f'{path_to_jpeg}/matches/{filename}.jpeg'
-        os.rename(jpeg_src, jpeg_dst)
+        jpg_src = f'{path_to_jpg}/{filename}.jpg'
+        jpg_dst = f'{path_to_jpg}/matches/{filename}.jpg'
+        os.rename(jpg_src, jpg_dst)
 
         xml_src = f'{path_to_xml}/{filename}.xml'
         xml_dst = f'{path_to_xml}/matches/{filename}.xml'
         os.rename(xml_src, xml_dst)
 
     # Moves unmatched files, ignores subdirectories
-    for file in os.scandir(path_to_jpeg):
+    for file in os.scandir(path_to_jpg):
         if file.is_file():
-            dst = f'{path_to_jpeg}/unmatched/{file.name}'
+            dst = f'{path_to_jpg}/unmatched/{file.name}'
             os.rename(file.path, dst)
     for file in os.scandir(path_to_xml):
         if file.is_file():
@@ -173,7 +173,7 @@ def matchesFinder(path_to_jpeg, path_to_xml):
             os.rename(file.path, dst)
 
     print('Matches found and files moved')
-    print(f'{len([_ for _ in os.scandir(path_to_jpeg) if _.is_file()])} jpeg files remaining')
+    print(f'{len([_ for _ in os.scandir(path_to_jpg) if _.is_file()])} jpg files remaining')
     print(f'{len([_ for _ in os.scandir(path_to_xml) if _.is_file()])} xml files remaining')
     print('-' * _string_mult)
 
@@ -192,5 +192,5 @@ if __name__ == '__main__':
     
     # Convert PDF files to JPEG
 
-    # Find matches between xml / jpeg and organize files
-    # matchesFinder('content/data/jpeg', 'content/data/xml')
+    # Find matches between xml / jpg and organize files
+    # matchesFinder('content/data/jpg', 'content/data/xml')
