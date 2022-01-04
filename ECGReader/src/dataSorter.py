@@ -5,10 +5,7 @@ from sys import argv
 import os
 import random
 import pdfplumber
-
-# Multiplies the '-' character that separates sections of outputs
-# for some functions
-_string_mult = 40
+from PyPDF2 import PdfFileWriter, PdfFileReader
 
 def renameXMLFiles(path):
     """
@@ -21,7 +18,7 @@ def renameXMLFiles(path):
     # Creates iterator over directory content
     directory_list = os.scandir(path)
     
-    print('-' * _string_mult)
+    print('-' * 32)
     print(f'Iterating over {path} to rename XML files...')
     for file in directory_list:
         if file.is_file():
@@ -55,7 +52,7 @@ def renameXMLFiles(path):
             print(f'Ignored')
     
     print('All XML files renamed.')
-    print('-' * _string_mult)
+    print('-' * 32)
 
 
 def pdfPatientIDExtractor(path):
@@ -65,7 +62,7 @@ def pdfPatientIDExtractor(path):
     :param path: should be a full file path comprehensive of '.pdf'
     :return: the patient code of the file passed as parameter
     """ 
-    
+
     with pdfplumber.open(path) as pdf:
         first_page = pdf.pages[0]
         # Returns a list of dictionaries with various parameters, including the
@@ -81,6 +78,33 @@ def pdfPatientIDExtractor(path):
         print(f'pID not found for: {path}')
         return 'NotFound'+str(random.randint(0, 100))
 
+def MultipagesPdfPatientCodeNameExtractor(path,code_bottom=793.0860326260371,break_bottom=366.121624373963):
+    """
+    MultipagesPdfPatientCodeNameExtractor extracts patient codes from '.pdf' files of ECGs composed by many pages.
+
+    :param path: should be a full file path comprehensive of '.pdf'
+    :param code_bottom: is the pdf coordinate at which the function finds the patient code
+    :param break_bottom: is the pdf coordinate at which the function stops to read the patient name
+    :return: the patient codes and names as two different lists
+    """
+    patient_codes=[]
+    names=[]
+    with pdfplumber.open(path) as pdf:
+        for page in pdf.pages:
+            list_pdf=page.extract_words(vertical_ttb=False)
+            code=False
+            name=str()
+            for dictionary in list_pdf:
+                if dictionary['bottom'] == code_bottom:
+                    patient_codes.append(dictionary['text'])
+                    code=True
+                if dictionary['bottom'] == break_bottom:
+                    break
+                if code and dictionary['bottom'] != code_bottom:
+                    name=name+dictionary['text']
+            if name != str():
+                names.append(name)
+    return patient_codes,names
 
 def renamePDFFiles(path):
     """
@@ -90,31 +114,46 @@ def renamePDFFiles(path):
     #assert isinstance(path, str), 'Warning: path is not a string'
     
     # Creates iterator over directory content
+    
     directory_list = os.scandir(path)
 
-    print('-' * _string_mult)
+    print('-' * 32)
     print(f'Iterating over {path} to rename PDF files...')
     for sub_directory in directory_list:
+
         # We know that files are organized into subfolder identified by dates
         if sub_directory.is_dir():
-            sub_dir_list = os.scandir(sub_directory.path)
-            for file in sub_dir_list:
-                if file.is_file():
-                    # Original filename is 'initials birthdate.pdf'
-                    parse_filename = file.name.split(' ')
+            if sub_directory.name == 'ECG 301221':
+                sub_dir_list = os.scandir(sub_directory.path)
+                for file in sub_dir_list:
+                    patient_ids, names= MultipagesPdfPatientCodeNameExtractor(file.path)
+                    
+                    inputpdf = PdfFileReader(open(file.path, "rb"))
+                    for i in range(inputpdf.numPages):
+                        output = PdfFileWriter()
+                        output.addPage(inputpdf.getPage(i))
+                        with open("document-page%s.pdf" % i, "wb") as outputStream:
+                            output.write(outputStream)
 
-                    new_filename = [parse_filename[0].upper()]
-                    new_filename.append(
-                        pdfPatientIDExtractor(file.path).upper()
-                        )
-                    # subdirectory name is 'ECG DATE' we only keep 'DATE'
-                    new_filename.append(sub_directory.name.split(' ')[1])
+            else:
+                sub_dir_list = os.scandir(sub_directory.path)
+                for file in sub_dir_list:
+                    if file.is_file():
+                        # Original filename is 'initials birthdate.pdf'
+                        parse_filename = file.name.split(' ')
 
-                    os.rename(file.path, path+'/'+'_'.join(new_filename)+'.pdf')
+                        new_filename = [parse_filename[0].upper()]
+                        new_filename.append(
+                            pdfPatientIDExtractor(file.path).upper()
+                            )
+                        # subdirectory name is 'ECG DATE' we only keep 'DATE'
+                        new_filename.append(sub_directory.name.split(' ')[1])
 
-                elif file.is_dir():  
-                    print(f'Found subdirectory: {file.path}')
-                    print(f'Ignored')
+                        os.rename(file.path, path+'/'+'_'.join(new_filename)+'.pdf')
+
+                    elif file.is_dir():  
+                        print(f'Found subdirectory: {file.path}')
+                        print(f'Ignored')
             
             os.rmdir(sub_directory.path)
 
@@ -122,60 +161,6 @@ def renamePDFFiles(path):
         elif sub_directory.is_file():
             print(f'File found: {sub_directory.path}')
             print('Ignored')
-        
-    print('-' * _string_mult)
-
-
-def matchesFinder(path_to_jpeg, path_to_xml):
-    """
-    Find matches between files in the two folder, excluding file extensions.
-    Reorganize files into `matches` and `unmatched` folders.
-    """
-    # List files in the two directories keeping only the filename without
-    # extension
-    jpeg_list = [file.path.split('.')[0].split('/')[-1]
-                for file in os.scandir(path_to_jpeg)]
-    xml_list = [file.path.split('.')[0].split('/')[-1]
-                for file in os.scandir(path_to_xml)]
-
-    print('-' * _string_mult)
-    print('Finding matches:')
-    # Finds the elements in both lists
-    matches = set(jpeg_list).intersection(xml_list)
-    print(f'There are {len(matches)} matches in data.')
-    print(f'There are {len(jpeg_list)} jpeg files.')
-    print(f'There are {len(xml_list)} xml files.')
-
-    # Creates folders to put matches and unmatched files into
-    os.mkdir(f'{path_to_jpeg}/matches')
-    os.mkdir(f'{path_to_jpeg}/unmatched')
-    os.mkdir(f'{path_to_xml}/matches')
-    os.mkdir(f'{path_to_xml}/unmatched')
-
-    # Moves matches into the proper folder
-    for filename in matches:
-        jpeg_src = f'{path_to_jpeg}/{filename}.jpeg'
-        jpeg_dst = f'{path_to_jpeg}/matches/{filename}.jpeg'
-        os.rename(jpeg_src, jpeg_dst)
-
-        xml_src = f'{path_to_xml}/{filename}.xml'
-        xml_dst = f'{path_to_xml}/matches/{filename}.xml'
-        os.rename(xml_src, xml_dst)
-
-    # Moves unmatched files, ignores subdirectories
-    for file in os.scandir(path_to_jpeg):
-        if file.is_file():
-            dst = f'{path_to_jpeg}/unmatched/{file.name}'
-            os.rename(file.path, dst)
-    for file in os.scandir(path_to_xml):
-        if file.is_file():
-            dst = f'{path_to_xml}/unmatched/{file.name}'
-            os.rename(file.path, dst)
-
-    print('Matches found and files moved')
-    print(f'{len([_ for _ in os.scandir(path_to_jpeg) if _.is_file()])} jpeg files remaining')
-    print(f'{len([_ for _ in os.scandir(path_to_xml) if _.is_file()])} xml files remaining')
-    print('-' * _string_mult)
 
 
 if __name__ == '__main__':
@@ -190,7 +175,4 @@ if __name__ == '__main__':
     # Rename PDF files
     renamePDFFiles('/content/data/pdf')
     
-    # Convert PDF files to JPEG
-
-    # Find matches between xml / jpeg and organize files
-    # matchesFinder('content/data/jpeg', 'content/data/xml')
+    # Find association xml + pdf
