@@ -265,8 +265,8 @@ def matchesFinder(path_to_png, path_to_xml):
 
 def convertPdfToPng(path_to_data, remove_pdf_folder=False):
     """
-    Expects to find a pdf folder, divided into `/matches` and `/unmatched`
-    converts pdf to png and puts into `/png`
+    Expects to find a pdf folder inside `path_to_data`, divided into `/matches` 
+    and `/unmatched`, then converts pdf to png and puts into `/png`
     """
     out_path = f'{path_to_data}/png'
 
@@ -360,7 +360,7 @@ if __name__ == '__main__':
     renamePDFFiles('/content/data/pdf')
     
     # Convert PDF files to PNG
-    convertPdfToPng(f'/content/data/pdf', remove_pdf_folder=True)
+    convertPdfToPng(f'/content/data', remove_pdf_folder=True)
 
     # Rotates PNG and crop to PNG
     imagePreProcess('/content/data/png')
