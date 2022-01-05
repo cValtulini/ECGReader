@@ -6,6 +6,8 @@ import os
 import random
 import pdfplumber
 from PyPDF2 import PdfFileWriter, PdfFileReader
+from PIL import Image
+import PIL
 
 
 # Multiplies the '-' character that separates sections of outputs
@@ -243,6 +245,8 @@ def convertPdfToPng(path_to_data, remove_pdf_folder=False):
     os.system(f'mkdir {out_path}/matches')
     os.system(f'mkdir {out_path}/unmatched')
 
+    print('-' * _string_mult)
+    print('Converting from PDF to PNG...')
     # Saves PDF as PNG images
     for file in matches_pdf:
         with pdfplumber.open(file.path) as pdf:
@@ -255,9 +259,58 @@ def convertPdfToPng(path_to_data, remove_pdf_folder=False):
             pdf.pages[0].to_image().save(f'{out_path}/unmatched/{filename}.png',
                                         format='PNG')
 
+    print('Conversion completed.')
+    print('-' * _string_mult)
+
     # Removes the pdf folder
     if remove_pdf_folder:
         os.rmdir(f'{path_to_data}/pdf')
+
+
+def rotateImage(img, angle, expand=True):
+    """
+    Simple function to rotate images using PIL
+    """
+    return img.rotate(angle, expand=expand)
+
+
+def cropImage(img, vertices):
+    """
+    Simple function to crop images using PIL
+    """
+    return img.crop(vertices)
+
+
+def imagePreProcess(path):
+    """
+    Rotates images, crop them to ECG removing additional elements.
+    Expect `path` folder to be divided into `matches` and `unmatched`
+    """
+    matches_files = os.scandir(f'{path}/matches')
+    unmatched_files = os.scandir(f'{path}/unmatched')
+
+    print('-' * _string_mult)
+    print('Pre-processing PNG images...')
+
+    # Left/Upper Right/Lower coordinates of the cropping box
+    crop_vertices = (38, 203, 767, 560)
+
+    for file in matches_files:
+        with Image.open(file.path) as img:
+            cropImage(
+                rotateImage(img, 270, expand=True),
+                crop_vertices
+                ).save(file.path)
+    for file in unmatched_files:
+        with Image.open(file.path) as img:
+            cropImage(
+                rotateImage(img, 270, expand=True),
+                crop_vertices
+                ).save(file.path)
+
+    print('Completed.')
+    print('-' * _string_mult)
+
 
 
 if __name__ == '__main__':
@@ -273,9 +326,10 @@ if __name__ == '__main__':
     renamePDFFiles('/content/data/pdf')
     
     # Convert PDF files to PNG
-    # convertPdfToPng(f'{data_path}/pdf', remove_pdf_folder=True)
+    # convertPdfToPng(f'/content/data/pdf', remove_pdf_folder=True)
 
-    # Crop PNG to ECG
+    # Rotates PNG and crop to PNG
+    # imagePreProcess('/content/data/png')
 
     # Find matches between xml / png and organize files
     # matchesFinder('content/data/png', 'content/data/xml')
