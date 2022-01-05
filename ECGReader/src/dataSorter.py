@@ -249,13 +249,13 @@ def matchesFinder(path_to_png, path_to_xml):
     os.mkdir(f'{path_to_xml}/unmatched')
 
     # Moves matches into the proper folder
-    for file in matches:
-        png_src = f'{path_to_png}/{file.name}.png'
-        png_dst = f'{path_to_png}/matches/{file.name}.png'
+    for filename in matches:
+        png_src = f'{path_to_png}/{filename}.png'
+        png_dst = f'{path_to_png}/matches/{filename}.png'
         os.rename(png_src, png_dst)
 
-        xml_src = f'{path_to_xml}/{file.name}.xml'
-        xml_dst = f'{path_to_xml}/matches/{file.name}.xml'
+        xml_src = f'{path_to_xml}/{filename}.xml'
+        xml_dst = f'{path_to_xml}/matches/{filename}.xml'
         os.rename(xml_src, xml_dst)
 
     # Moves unmatched files, ignores subdirectories
