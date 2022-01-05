@@ -362,6 +362,12 @@ if __name__ == '__main__':
     # Convert PDF files to PNG
     convertPdfToPng(f'/content/data')
 
+    os.mkdir('/content/data/png')
+    os.mkdir('/content/data/png/matches')
+    os.mkdir('/content/data/png/unmatched')
+    os.mkdir('/content/data/xml/matches')
+    os.mkdir('/content/data/xml/unmatched')
+
     # Rotates PNG and crop to PNG
     imagePreProcess('/content/data/png')
 
