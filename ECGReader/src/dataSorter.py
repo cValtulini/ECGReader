@@ -135,9 +135,13 @@ def renamePDFFiles(path):
 
         # We know that files are organized into subfolder identified by dates
         if sub_directory.is_dir():
+
+            # We need to parse the pdfs in 'ECG 301221' differently as they contain multiple pages
             if sub_directory.name == 'ECG 301221':
                 sub_dir_list = os.scandir(sub_directory.path)
                 for file in sub_dir_list:
+
+                    # The pdf "15 ECG.pdf" has different coordinates for initials and patientID
                     if file.name=="15 ECG.pdf":
                         patient_ids, names= multipagesPdfPatientIDNameExtractor(file.path,793.0859926260371,366.121584373963)
                     else:
@@ -145,13 +149,18 @@ def renamePDFFiles(path):
                     
                     inputpdf = PdfFileReader(open(file.path, "rb"))
                     for i in range(inputpdf.numPages):
+
+                        # We have a file with a blank page at number 14, that is skipped as follows
                         if i < 14:
                             output = PdfFileWriter()
                             output.addPage(inputpdf.getPage(i))
                             split_name=names[i].split(",")
                             new_filename=split_name[0][0]+split_name[1][0]+"_"+patient_ids[i]+"_"+sub_directory.name.split(' ')[1]+".pdf"
+
+                            # Pdf are splitted and written in the "path" folder
                             with open(path+"/"+new_filename, "wb") as outputStream:
                                 output.write(outputStream)
+
                         if i > 14:
                             output = PdfFileWriter()
                             output.addPage(inputpdf.getPage(i))
@@ -159,6 +168,8 @@ def renamePDFFiles(path):
                             new_filename=split_name[0][0]+split_name[1][0]+"_"+patient_ids[i-1]+"_"+sub_directory.name.split(' ')[1]+".pdf"
                             with open(path+"/"+new_filename, "wb") as outputStream:
                                 output.write(outputStream)
+                                
+                    # We need to delete the multi pages pdfs to delete the folder later
                     os.remove(file.path)
                 
 
