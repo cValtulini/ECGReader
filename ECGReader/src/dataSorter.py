@@ -29,6 +29,9 @@ def renameXMLFiles(path):
     print(f'Iterating over {path} to rename XML files...')
     for file in directory_list:
         if file.is_file():
+            print(file.name)
+            # Ignores system files
+
             # Produces a list containing
             # ['patient ID', 'surname', 'name', 'aaaa-mm-dd_hh-mm-ss.xml']
             # surname and name may have the structure 'sur1_sur2' 'name1_name2'
@@ -41,8 +44,10 @@ def renameXMLFiles(path):
             # We only keep the first surname initial and first name initial 
             # since it is what we can extract from pdfs and the file name 
             # remains a univoque string containing pID + date
-            name_initials.append(parse_filename[1][0].upper())
-            name_initials.append(parse_filename[2][0].upper())
+            patient_surname = parse_filename[1].upper()
+            patient_name = parse_filename[2].upper()
+            name_initials.append(patient_surname[0])
+            name_initials.append(patient_name[0])
 
             new_filename.append(''.join(name_initials))
             new_filename.append(parse_filename[0].upper())
@@ -146,7 +151,6 @@ def renamePDFFiles(path):
 
         # We know that files are organized into subfolder identified by dates
         if sub_directory.is_dir():
-
             # We need to parse the pdfs in 'ECG 301221' differently as they contain multiple pages
             if sub_directory.name == 'ECG 301221':
                 sub_dir_list = os.scandir(sub_directory.path)
@@ -343,19 +347,19 @@ if __name__ == '__main__':
     _, data_path = argv
 
     # Copy data into local content folder
-    os.system(f'cp -r {data_path} /content/')
+    os.system(f'cp -r {data_path} content/')
 
     # Rename XML files
-    renameXMLFiles('/content/data/xml')
+    renameXMLFiles('content/data/xml')
 
     # Rename PDF files
-    renamePDFFiles('/content/data/pdf')
+    renamePDFFiles('content/data/pdf')
     
     # Convert PDF files to PNG
-    convertPdfToPng(f'/content/data', remove_pdf_folder=True)
+    convertPdfToPng(f'content/data', remove_pdf_folder=True)
 
     # Rotates PNG and crop to PNG
-    imagePreProcess('/content/data/png')
+    imagePreProcess('content/data/png')
 
     # Find matches between xml / png and organize files
     matchesFinder('content/data/png', 'content/data/xml')
