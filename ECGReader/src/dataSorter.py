@@ -12,7 +12,7 @@ import PIL
 
 # Multiplies the '-' character that separates sections of outputs
 # for some functions
-_string_mult = 40
+_string_mult = 100
 
 
 def renameXMLFiles(path):
@@ -237,7 +237,6 @@ def matchesFinder(path_to_png, path_to_xml):
     print('Finding matches:')
     # Finds the elements in both lists
     matches = set(png_list).intersection(xml_list)
-    print(matches)
 
     print(f'There are {len(matches)} matches in data.')
     print(f'There are {len(png_list)} png files.')
@@ -275,7 +274,7 @@ def matchesFinder(path_to_png, path_to_xml):
     print('-' * _string_mult)
 
 
-def convertPdfToPng(path_to_data, resolution=None):
+def convertPdfToPng(path_to_data):
     """
     Expects to find a pdf folder inside `path_to_data`, then converts pdf to png and puts into `/png`
     """
@@ -294,8 +293,7 @@ def convertPdfToPng(path_to_data, resolution=None):
     for file in pdf_list:
         with pdfplumber.open(file.path) as pdf:
             filename = file.name.split('.')[0]
-            pdf.pages[0].to_image(resolution=resolution).save(f'{out_path}/{filename}.png',
-                                        format='PNG')
+            pdf.pages[0].to_image(resolution=900).save(f'{out_path}/{filename}.png', format='PNG')
 
     print('Conversion completed.')
     print('-' * _string_mult)
@@ -330,21 +328,22 @@ def imagePreProcess(path):
     crop_vertices = (476, 2540, 9588, 6990)
 
     for file in matches_files:
-        with Image.open(file.path) as img:
-            cropImage(
-                rotateImage(img, 270, expand=True),
-                crop_vertices
-                ).save(file.path)
+        if file.is_file():
+            with Image.open(file.path) as img:
+                cropImage(
+                    rotateImage(img, 270, expand=True),
+                    crop_vertices
+                    ).save(file.path)
     for file in unmatched_files:
-        with Image.open(file.path) as img:
-            cropImage(
-                rotateImage(img, 270, expand=True),
-                crop_vertices
-                ).save(file.path)
+        if file.is_file():
+            with Image.open(file.path) as img:
+                cropImage(
+                    rotateImage(img, 270, expand=True),
+                    crop_vertices
+                    ).save(file.path)
 
     print('Completed.')
     print('-' * _string_mult)
-
 
 
 if __name__ == '__main__':
@@ -360,7 +359,7 @@ if __name__ == '__main__':
     renamePDFFiles('/content/data/pdf')
     
     # Convert PDF files to PNG
-    convertPdfToPng(f'/content/data', resolution=900)
+    convertPdfToPng(f'/content/data')
 
     # Find matches between xml / png and organize files
     matchesFinder('/content/data/png', '/content/data/xml')
