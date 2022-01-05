@@ -4,7 +4,6 @@ This module is useful to handle our files to make sure that pdf and xml name cor
 from sys import argv
 import os
 import random
-from pdf2jpg import pdf2jpg
 import pdfplumber
 from PyPDF2 import PdfFileWriter, PdfFileReader
 
@@ -116,6 +115,7 @@ def multipagesPdfPatientIDNameExtractor(path,
                 names.append(name)
     return patient_codes,names
 
+
 def renamePDFFiles(path):
     """
     Renames PDF files into the new name format
@@ -175,46 +175,46 @@ def renamePDFFiles(path):
     print('-' * _string_mult)
 
 
-def matchesFinder(path_to_jpg, path_to_xml):
+def matchesFinder(path_to_png, path_to_xml):
     """
     Find matches between files in the two folder, excluding file extensions.
     Reorganize files into `matches` and `unmatched` folders.
     """
     # List files in the two directories keeping only the filename without
     # extension
-    jpg_list = [file.path.split('.')[0].split('/')[-1]
-                for file in os.scandir(path_to_jpg)]
+    png_list = [file.path.split('.')[0].split('/')[-1]
+                for file in os.scandir(path_to_png)]
     xml_list = [file.path.split('.')[0].split('/')[-1]
                 for file in os.scandir(path_to_xml)]
 
     print('-' * _string_mult)
     print('Finding matches:')
     # Finds the elements in both lists
-    matches = set(jpg_list).intersection(xml_list)
+    matches = set(png_list).intersection(xml_list)
     print(f'There are {len(matches)} matches in data.')
-    print(f'There are {len(jpg_list)} jpg files.')
+    print(f'There are {len(png_list)} png files.')
     print(f'There are {len(xml_list)} xml files.')
 
     # Creates folders to put matches and unmatched files into
-    os.mkdir(f'{path_to_jpg}/matches')
-    os.mkdir(f'{path_to_jpg}/unmatched')
+    os.mkdir(f'{path_to_png}/matches')
+    os.mkdir(f'{path_to_png}/unmatched')
     os.mkdir(f'{path_to_xml}/matches')
     os.mkdir(f'{path_to_xml}/unmatched')
 
     # Moves matches into the proper folder
     for filename in matches:
-        jpg_src = f'{path_to_jpg}/{filename}.jpg'
-        jpg_dst = f'{path_to_jpg}/matches/{filename}.jpg'
-        os.rename(jpg_src, jpg_dst)
+        png_src = f'{path_to_png}/{filename}.png'
+        png_dst = f'{path_to_png}/matches/{filename}.png'
+        os.rename(png_src, png_dst)
 
         xml_src = f'{path_to_xml}/{filename}.xml'
         xml_dst = f'{path_to_xml}/matches/{filename}.xml'
         os.rename(xml_src, xml_dst)
 
     # Moves unmatched files, ignores subdirectories
-    for file in os.scandir(path_to_jpg):
+    for file in os.scandir(path_to_png):
         if file.is_file():
-            dst = f'{path_to_jpg}/unmatched/{file.name}'
+            dst = f'{path_to_png}/unmatched/{file.name}'
             os.rename(file.path, dst)
     for file in os.scandir(path_to_xml):
         if file.is_file():
@@ -222,32 +222,42 @@ def matchesFinder(path_to_jpg, path_to_xml):
             os.rename(file.path, dst)
 
     print('Matches found and files moved')
-    print(f'{len([_ for _ in os.scandir(path_to_jpg) if _.is_file()])} jpg files remaining')
+    print(f'{len([_ for _ in os.scandir(path_to_png) if _.is_file()])} png files remaining')
     print(f'{len([_ for _ in os.scandir(path_to_xml) if _.is_file()])} xml files remaining')
     print('-' * _string_mult)
 
 
-def convertPdfToJpg(path):
+def convertPdfToPng(path_to_data, remove_pdf_folder=False):
     """
-    Expects the `path` folder to be divided into `/matches` and `/unmatched`
-    converts pdf to jpg and puts into `/jpg`
+    Expects to find a pdf folder, divided into `/matches` and `/unmatched`
+    converts pdf to png and puts into `/png`
     """
+    out_path = f'{path_to_data}/png'
+
     # Gets folders file list
-    matches_pdf = os.scandir(f'{path}/matches')
-    unmatched_pdf = os.scandir(f'{path}/unmatched')
+    matches_pdf = os.scandir(f'{path_to_data}/pdf/matches')
+    unmatched_pdf = os.scandir(f'{path_to_data}/pdf/unmatched')
 
-    os.system(f'mkdir {path}/jpg')
-    os.system(f'mkdir {path}/jpg/matches')
-    os.system(f'mkdir {path}/jpg/unmatched')
+    # Creates folder with new format at the same level of the pdf folder
+    os.system(f'mkdir {out_path}')
+    os.system(f'mkdir {out_path}/matches')
+    os.system(f'mkdir {out_path}/unmatched')
 
-    for pdf in matches_pdf:
-        pdf2jpg.convert_pdf2jpg(pdf.path, out_path)
+    # Saves PDF as PNG images
+    for file in matches_pdf:
+        with pdfplumber.open(file.path) as pdf:
+            filename = file.name.split('.')[0]
+            pdf.pages[0].to_image().save(f'{out_path}/matches/{filename}.png',
+                                        format='PNG')
+    for file in unmatched_pdf:
+        with pdfplumber.open(file.path) as pdf:
+            filename = file.name.split('.')[0]
+            pdf.pages[0].to_image().save(f'{out_path}/unmatched/{filename}.png',
+                                        format='PNG')
 
-
-    os.chdir(path)
-    os.rename(f'/jpg', '../jpg')
-    os.chdir('/content')
-    os.rmdir(path)
+    # Removes the pdf folder
+    if remove_pdf_folder:
+        os.rmdir(f'{path_to_data}/pdf')
 
 
 if __name__ == '__main__':
@@ -262,8 +272,10 @@ if __name__ == '__main__':
     # Rename PDF files
     renamePDFFiles('/content/data/pdf')
     
-    # Convert PDF files to JPEG
-    # convertPdfToJpg(f'{data_path}/pdf')
+    # Convert PDF files to PNG
+    # convertPdfToPng(f'{data_path}/pdf', remove_pdf_folder=True)
 
-    # Find matches between xml / jpg and organize files
-    # matchesFinder('content/data/jpg', 'content/data/xml')
+    # Crop PNG to ECG
+
+    # Find matches between xml / png and organize files
+    # matchesFinder('content/data/png', 'content/data/xml')

@@ -4,10 +4,6 @@ Adds the installation directory to the system path
 """
 import os
 
-print("Looking for dependencies:")
-os.system('apt-get install libxml2')
-os.system('apt-get install libxml2-dev')
-
 os.system('mv ./ECGReader/spxml .')
 
 print("Installing spxml: ")
