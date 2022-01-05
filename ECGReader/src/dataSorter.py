@@ -275,7 +275,7 @@ def matchesFinder(path_to_png, path_to_xml):
     print('-' * _string_mult)
 
 
-def convertPdfToPng(path_to_data):
+def convertPdfToPng(path_to_data, resolution=None):
     """
     Expects to find a pdf folder inside `path_to_data`, then converts pdf to png and puts into `/png`
     """
@@ -294,7 +294,7 @@ def convertPdfToPng(path_to_data):
     for file in pdf_list:
         with pdfplumber.open(file.path) as pdf:
             filename = file.name.split('.')[0]
-            pdf.pages[0].to_image().save(f'{out_path}/{filename}.png',
+            pdf.pages[0].to_image(resolution=dpi).save(f'{out_path}/{filename}.png',
                                         format='PNG')
 
     print('Conversion completed.')
@@ -348,7 +348,7 @@ def imagePreProcess(path):
 
 
 if __name__ == '__main__':
-    _, data_path = argv
+    _, data_path, dpi = argv
 
     # Copy data into local content folder
     os.system(f'cp -r {data_path} /content/')
@@ -360,7 +360,7 @@ if __name__ == '__main__':
     renamePDFFiles('/content/data/pdf')
     
     # Convert PDF files to PNG
-    convertPdfToPng(f'/content/data')
+    convertPdfToPng(f'/content/data', resolution=dpi)
 
     # Find matches between xml / png and organize files
     matchesFinder('/content/data/png', '/content/data/xml')
