@@ -20,7 +20,6 @@ def renameXMLFiles(path):
     Renames XML files into the new name format
     initials_patientID_ddmmaa.xml
     """
-
     #assert isinstance(path, str), 'Warning: path is not a string'
     
     # Creates iterator over directory content
@@ -31,7 +30,7 @@ def renameXMLFiles(path):
     for file in directory_list:
         if file.is_file():
             # Produces a list containing
-            # ['patient ID', 'surname', 'name', 'aaaa-mm-dd_hh-mm-ss']
+            # ['patient ID', 'surname', 'name', 'aaaa-mm-dd_hh-mm-ss.xml']
             # surname and name may have the structure 'sur1_sur2' 'name1_name2'
             parse_filename = file.name.split(',')
 
@@ -39,10 +38,11 @@ def renameXMLFiles(path):
             new_filename = []
 
             name_initials = []
-            for substring in parse_filename[1].split('_'):
-                if len(substring): name_initials.append(substring[0].upper())
-            for substring in parse_filename[2].split('_'):
-                if len(substring): name_initials.append(substring[0].upper())
+            # We only keep the first surname initial and first name initial 
+            # since it is what we can extract from pdfs and the file name 
+            # remains a univoque string containing pID + date
+            name_initials.append(parse_filename[1][0].upper())
+            name_initials.append(parse_filename[2][0].upper())
 
             new_filename.append(''.join(name_initials))
             new_filename.append(parse_filename[0].upper())
@@ -151,7 +151,6 @@ def renamePDFFiles(path):
             if sub_directory.name == 'ECG 301221':
                 sub_dir_list = os.scandir(sub_directory.path)
                 for file in sub_dir_list:
-
                     # The pdf "15 ECG.pdf" has different coordinates for initials and patientID
                     if file.name=="15 ECG.pdf":
                         patient_ids, names= multipagesPdfPatientIDNameExtractor(file.path,793.0859926260371,366.121584373963)
@@ -160,7 +159,6 @@ def renamePDFFiles(path):
                     
                     inputpdf = PdfFileReader(open(file.path, "rb"))
                     for i in range(inputpdf.numPages):
-
                         # We have a file with a blank page at number 14, that is skipped as follows
                         if i < 14:
                             output = PdfFileWriter()
@@ -183,7 +181,6 @@ def renamePDFFiles(path):
                     # We need to delete the multi pages pdfs to delete the folder later
                     os.remove(file.path)
                 
-
             else:
                 sub_dir_list = os.scandir(sub_directory.path)
                 for file in sub_dir_list:
@@ -363,10 +360,10 @@ if __name__ == '__main__':
     renamePDFFiles('/content/data/pdf')
     
     # Convert PDF files to PNG
-    # convertPdfToPng(f'/content/data/pdf', remove_pdf_folder=True)
+    convertPdfToPng(f'/content/data/pdf', remove_pdf_folder=True)
 
     # Rotates PNG and crop to PNG
-    # imagePreProcess('/content/data/png')
+    imagePreProcess('/content/data/png')
 
     # Find matches between xml / png and organize files
-    # matchesFinder('content/data/png', 'content/data/xml')
+    matchesFinder('content/data/png', 'content/data/xml')
