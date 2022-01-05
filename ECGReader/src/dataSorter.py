@@ -100,21 +100,32 @@ def multipagesPdfPatientIDNameExtractor(path,
     """
     patient_codes = []
     names = []
+    
     with pdfplumber.open(path) as pdf:
         for page in pdf.pages:
             list_pdf = page.extract_words(vertical_ttb=False)
             code = False
             name = str()
             for dictionary in list_pdf:
+
+                # Here we look for the dictionary containing the patient code 
                 if dictionary['bottom'] == code_bottom:
                     patient_codes.append(dictionary['text'])
                     code=True
+                
+                # Here we check if we reached the end of the name field in the pdf
                 if dictionary['bottom'] == break_bottom:
                     break
+
+                # Here we compose the patient name that will be present, if we
+                # found the patient code, in the dictionaries right after it
                 if code and dictionary['bottom'] != code_bottom:
                     name=name+dictionary['text']
+
+            # We check that the name is present in the pdf
             if name != str():
                 names.append(name)
+
     return patient_codes, names
 
 
@@ -168,7 +179,7 @@ def renamePDFFiles(path):
                             new_filename=split_name[0][0]+split_name[1][0]+"_"+patient_ids[i-1]+"_"+sub_directory.name.split(' ')[1]+".pdf"
                             with open(path+"/"+new_filename, "wb") as outputStream:
                                 output.write(outputStream)
-                                
+
                     # We need to delete the multi pages pdfs to delete the folder later
                     os.remove(file.path)
                 
