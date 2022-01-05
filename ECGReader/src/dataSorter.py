@@ -138,7 +138,10 @@ def renamePDFFiles(path):
             if sub_directory.name == 'ECG 301221':
                 sub_dir_list = os.scandir(sub_directory.path)
                 for file in sub_dir_list:
-                    patient_ids, names= multipagesPdfPatientIDNameExtractor(file.path)
+                    if file.name=="15 ECG.pdf":
+                        patient_ids, names= multipagesPdfPatientIDNameExtractor(file.path,793.0859926260371,366.121584373963)
+                    else:
+                        patient_ids, names= multipagesPdfPatientIDNameExtractor(file.path)
                     
                     inputpdf = PdfFileReader(open(file.path, "rb"))
                     for i in range(inputpdf.numPages):
