@@ -49,7 +49,7 @@ def renameXMLFiles(path):
                 date.insert(0, substring)
             date[2] = date[2][2]+date[2][3]
 
-            if date[0] == 30:
+            if date[0] == '30':
                 patient_surname = parse_filename[1].upper()
                 patient_name = parse_filename[2].upper()
                 name_initials.append(patient_surname[0])
