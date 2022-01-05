@@ -275,7 +275,7 @@ def matchesFinder(path_to_png, path_to_xml):
     print('-' * _string_mult)
 
 
-def convertPdfToPng(path_to_data, remove_pdf_folder=False):
+def convertPdfToPng(path_to_data):
     """
     Expects to find a pdf folder inside `path_to_data`, then converts pdf to png and puts into `/png`
     """
@@ -299,10 +299,6 @@ def convertPdfToPng(path_to_data, remove_pdf_folder=False):
 
     print('Conversion completed.')
     print('-' * _string_mult)
-
-    # Removes the pdf folder
-    if remove_pdf_folder:
-        os.removedirs(f'{path_to_data}/pdf')
 
 
 def rotateImage(img, angle, expand=True):
@@ -364,7 +360,7 @@ if __name__ == '__main__':
     renamePDFFiles('/content/data/pdf')
     
     # Convert PDF files to PNG
-    convertPdfToPng(f'/content/data', remove_pdf_folder=True)
+    convertPdfToPng(f'/content/data')
 
     # Rotates PNG and crop to PNG
     imagePreProcess('/content/data/png')
