@@ -230,8 +230,10 @@ def matchesFinder(path_to_png, path_to_xml):
     """
     # List files in the two directories keeping only the filename without
     # extension
-    png_list = [file.name.split('.')[0] for file in os.scandir(path_to_png)]
-    xml_list = [file.name.split('.')[0] for file in os.scandir(path_to_xml)]
+    png_list = [file.name.split('.')[0] for file in os.scandir(path_to_png) if file.is_file()]
+    xml_list = [file.name.split('.')[0] for file in os.scandir(path_to_xml) if file.is_file()]
+
+    print(png_list)
 
     print('-' * _string_mult)
     print('Finding matches:')
