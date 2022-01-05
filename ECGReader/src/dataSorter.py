@@ -355,19 +355,19 @@ if __name__ == '__main__':
     _, data_path = argv
 
     # Copy data into local content folder
-    os.system(f'cp -r {data_path} content/')
+    os.system(f'cp -r {data_path} /content/')
 
     # Rename XML files
-    renameXMLFiles('content/data/xml')
+    renameXMLFiles('/content/data/xml')
 
     # Rename PDF files
-    renamePDFFiles('content/data/pdf')
+    renamePDFFiles('/content/data/pdf')
     
     # Convert PDF files to PNG
-    convertPdfToPng(f'content/data', remove_pdf_folder=True)
+    convertPdfToPng(f'/content/data', remove_pdf_folder=True)
 
     # Rotates PNG and crop to PNG
-    imagePreProcess('content/data/png')
+    imagePreProcess('/content/data/png')
 
     # Find matches between xml / png and organize files
-    matchesFinder('content/data/png', 'content/data/xml')
+    matchesFinder('/content/data/png', '/content/data/xml')
