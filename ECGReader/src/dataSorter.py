@@ -29,33 +29,41 @@ def renameXMLFiles(path):
     print(f'Iterating over {path} to rename XML files...')
     for file in directory_list:
         if file.is_file():
-            print(file.name)
             # Ignores system files
 
             # Produces a list containing
             # ['patient ID', 'surname', 'name', 'aaaa-mm-dd_hh-mm-ss.xml']
             # surname and name may have the structure 'sur1_sur2' 'name1_name2'
             parse_filename = file.name.split(',')
+            # Strange problem when locally executed on macOS
+            if len(parse_filename) != 4:
+                continue
 
             # Creates a list containing the elements for the new filename
             new_filename = []
 
             name_initials = []
-            # We only keep the first surname initial and first name initial 
-            # since it is what we can extract from pdfs and the file name 
-            # remains a univoque string containing pID + date
-            patient_surname = parse_filename[1].upper()
-            patient_name = parse_filename[2].upper()
-            name_initials.append(patient_surname[0])
-            name_initials.append(patient_name[0])
 
-            new_filename.append(''.join(name_initials))
-            new_filename.append(parse_filename[0].upper())
-            
             date = []
             for substring in parse_filename[3].split('_')[0].split('-'):
                 date.insert(0, substring)
             date[2] = date[2][2]+date[2][3]
+
+            if date[0] == 30:
+                patient_surname = parse_filename[1].upper()
+                patient_name = parse_filename[2].upper()
+                name_initials.append(patient_surname[0])
+                name_initials.append(patient_name[0])
+            else:
+                for substring in parse_filename[1].split('_'):
+                    if len(substring):
+                        name_initials.append(substring[0].upper())
+                for substring in parse_filename[2].split('_'):
+                    if len(substring):
+                        name_initials.append(substring[0].upper())
+
+            new_filename.append(''.join(name_initials))
+            new_filename.append(parse_filename[0].upper())
             new_filename.append(''.join(date))
 
             os.rename(file.path, path+'/'+'_'.join(new_filename)+'.xml')  
@@ -157,18 +165,18 @@ def renamePDFFiles(path):
                 for file in sub_dir_list:
                     # The pdf "15 ECG.pdf" has different coordinates for initials and patientID
                     if file.name=="15 ECG.pdf":
-                        patient_ids, names= multipagesPdfPatientIDNameExtractor(file.path,793.0859926260371,366.121584373963)
+                        patient_ids, names = multipagesPdfPatientIDNameExtractor(file.path,793.0859926260371,366.121584373963)
                     else:
-                        patient_ids, names= multipagesPdfPatientIDNameExtractor(file.path)
-                    
+                        patient_ids, names = multipagesPdfPatientIDNameExtractor(file.path)
+
                     inputpdf = PdfFileReader(open(file.path, "rb"))
                     for i in range(inputpdf.numPages):
                         # We have a file with a blank page at number 14, that is skipped as follows
                         if i < 14:
                             output = PdfFileWriter()
                             output.addPage(inputpdf.getPage(i))
-                            split_name=names[i].split(",")
-                            new_filename=split_name[0][0]+split_name[1][0]+"_"+patient_ids[i]+"_"+sub_directory.name.split(' ')[1]+".pdf"
+                            split_name = names[i].split(",")
+                            new_filename = split_name[0][0]+split_name[1][0]+"_"+patient_ids[i]+"_"+sub_directory.name.split(' ')[1]+".pdf"
 
                             # Pdf are splitted and written in the "path" folder
                             with open(path+"/"+new_filename, "wb") as outputStream:
@@ -177,8 +185,8 @@ def renamePDFFiles(path):
                         if i > 14:
                             output = PdfFileWriter()
                             output.addPage(inputpdf.getPage(i))
-                            split_name=names[i-1].split(",")
-                            new_filename=split_name[0][0]+split_name[1][0]+"_"+patient_ids[i-1]+"_"+sub_directory.name.split(' ')[1]+".pdf"
+                            split_name = names[i-1].split(",")
+                            new_filename = split_name[0][0]+split_name[1][0]+"_"+patient_ids[i-1]+"_"+sub_directory.name.split(' ')[1]+".pdf"
                             with open(path+"/"+new_filename, "wb") as outputStream:
                                 output.write(outputStream)
 
