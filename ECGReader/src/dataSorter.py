@@ -159,6 +159,8 @@ def renamePDFFiles(path):
                             new_filename=split_name[0][0]+split_name[1][0]+"_"+patient_ids[i-1]+"_"+sub_directory.name.split(' ')[1]+".pdf"
                             with open(path+"/"+new_filename, "wb") as outputStream:
                                 output.write(outputStream)
+                    os.remove(file.path)
+                
 
             else:
                 sub_dir_list = os.scandir(sub_directory.path)
