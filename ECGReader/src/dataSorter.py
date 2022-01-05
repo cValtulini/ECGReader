@@ -359,10 +359,10 @@ if __name__ == '__main__':
     renamePDFFiles('/content/data/pdf')
     
     # Convert PDF files to PNG
-    convertPdfToPng(f'/content/data')
+    #convertPdfToPng(f'/content/data')
 
     # Find matches between xml / png and organize files
-    matchesFinder('/content/data/png', '/content/data/xml')
+    #matchesFinder('/content/data/png', '/content/data/xml')
 
     # Rotates PNG and crop to PNG
-    imagePreProcess('/content/data/png')
+    #imagePreProcess('/content/data/png')
