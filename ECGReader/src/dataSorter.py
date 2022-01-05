@@ -98,13 +98,13 @@ def multipagesPdfPatientIDNameExtractor(path,
     :param break_bottom: is the pdf coordinate at which the function stops to read the patient name
     :return: the patient codes and names as two different lists
     """
-    patient_codes=[]
-    names=[]
+    patient_codes = []
+    names = []
     with pdfplumber.open(path) as pdf:
         for page in pdf.pages:
-            list_pdf=page.extract_words(vertical_ttb=False)
-            code=False
-            name=str()
+            list_pdf = page.extract_words(vertical_ttb=False)
+            code = False
+            name = str()
             for dictionary in list_pdf:
                 if dictionary['bottom'] == code_bottom:
                     patient_codes.append(dictionary['text'])
@@ -115,7 +115,7 @@ def multipagesPdfPatientIDNameExtractor(path,
                     name=name+dictionary['text']
             if name != str():
                 names.append(name)
-    return patient_codes,names
+    return patient_codes, names
 
 
 def renamePDFFiles(path):
@@ -241,9 +241,9 @@ def convertPdfToPng(path_to_data, remove_pdf_folder=False):
     unmatched_pdf = os.scandir(f'{path_to_data}/pdf/unmatched')
 
     # Creates folder with new format at the same level of the pdf folder
-    os.system(f'mkdir {out_path}')
-    os.system(f'mkdir {out_path}/matches')
-    os.system(f'mkdir {out_path}/unmatched')
+    if not  os.path.isdir(out_path):
+        os.makedirs(f'{out_path}/matches')
+        os.makedirs(f'{out_path}/unmatched')
 
     print('-' * _string_mult)
     print('Converting from PDF to PNG...')
@@ -264,7 +264,7 @@ def convertPdfToPng(path_to_data, remove_pdf_folder=False):
 
     # Removes the pdf folder
     if remove_pdf_folder:
-        os.rmdir(f'{path_to_data}/pdf')
+        os.removedirs(f'{path_to_data}/pdf')
 
 
 def rotateImage(img, angle, expand=True):
