@@ -149,15 +149,15 @@ def renamePDFFiles(path):
                             output = PdfFileWriter()
                             output.addPage(inputpdf.getPage(i))
                             split_name=names[i].split(",")
-                            file_name=split_name[0][0]+split_name[1][0]+"_"+patient_ids[i]+"_"+sub_directory.name.split(' ')[1]+".pdf"
-                            with open(file_name, "wb") as outputStream:
+                            new_filename=split_name[0][0]+split_name[1][0]+"_"+patient_ids[i]+"_"+sub_directory.name.split(' ')[1]+".pdf"
+                            with open(path+"/"new_filename, "wb") as outputStream:
                                 output.write(outputStream)
                         if i > 14:
                             output = PdfFileWriter()
                             output.addPage(inputpdf.getPage(i))
                             split_name=names[i-1].split(",")
-                            file_name=split_name[0][0]+split_name[1][0]+"_"+patient_ids[i-1]+"_"+sub_directory.name.split(' ')[1]+".pdf"
-                            with open(file_name, "wb") as outputStream:
+                            new_filename=split_name[0][0]+split_name[1][0]+"_"+patient_ids[i-1]+"_"+sub_directory.name.split(' ')[1]+".pdf"
+                            with open(path+"/"+new_filename, "wb") as outputStream:
                                 output.write(outputStream)
 
             else:
