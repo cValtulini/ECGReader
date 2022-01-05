@@ -8,9 +8,5 @@ os.system('mv ./ECGReader/spxml .')
 
 print("Installing spxml: ")
 os.chdir('spxml')
-os.system('python3  setup.py install')
+os.system('python3 setup.py install')
 os.chdir('..')
-
-#print("Adding installation folder to path: ")
-#import sys
-#sys.path.append(r'/root/.local/lib/python3.7/site-packages')
