@@ -265,32 +265,24 @@ def matchesFinder(path_to_png, path_to_xml):
 
 def convertPdfToPng(path_to_data, remove_pdf_folder=False):
     """
-    Expects to find a pdf folder inside `path_to_data`, divided into `/matches` 
-    and `/unmatched`, then converts pdf to png and puts into `/png`
+    Expects to find a pdf folder inside `path_to_data`, then converts pdf to png and puts into `/png`
     """
     out_path = f'{path_to_data}/png'
 
     # Gets folders file list
-    matches_pdf = os.scandir(f'{path_to_data}/pdf/matches')
-    unmatched_pdf = os.scandir(f'{path_to_data}/pdf/unmatched')
+    pdf_list = os.scandir(f'{path_to_data}/pdf')
 
     # Creates folder with new format at the same level of the pdf folder
-    if not  os.path.isdir(out_path):
-        os.makedirs(f'{out_path}/matches')
-        os.makedirs(f'{out_path}/unmatched')
+    if not os.path.isdir(out_path):
+        os.makedirs(f'{out_path}')
 
     print('-' * _string_mult)
     print('Converting from PDF to PNG...')
     # Saves PDF as PNG images
-    for file in matches_pdf:
+    for file in pdf_list:
         with pdfplumber.open(file.path) as pdf:
             filename = file.name.split('.')[0]
-            pdf.pages[0].to_image().save(f'{out_path}/matches/{filename}.png',
-                                        format='PNG')
-    for file in unmatched_pdf:
-        with pdfplumber.open(file.path) as pdf:
-            filename = file.name.split('.')[0]
-            pdf.pages[0].to_image().save(f'{out_path}/unmatched/{filename}.png',
+            pdf.pages[0].to_image().save(f'{out_path}/{filename}.png',
                                         format='PNG')
 
     print('Conversion completed.')
