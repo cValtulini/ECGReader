@@ -348,7 +348,7 @@ def imagePreProcess(path):
 
 
 if __name__ == '__main__':
-    _, data_path, dpi = argv
+    _, data_path, dpix, dpiy = argv
 
     # Copy data into local content folder
     os.system(f'cp -r {data_path} /content/')
@@ -360,7 +360,7 @@ if __name__ == '__main__':
     renamePDFFiles('/content/data/pdf')
     
     # Convert PDF files to PNG
-    convertPdfToPng(f'/content/data', resolution=dpi)
+    convertPdfToPng(f'/content/data', resolution=(dpix, dpiy))
 
     # Find matches between xml / png and organize files
     matchesFinder('/content/data/png', '/content/data/xml')
