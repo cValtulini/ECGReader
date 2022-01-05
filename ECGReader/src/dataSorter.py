@@ -144,7 +144,9 @@ def renamePDFFiles(path):
                     for i in range(inputpdf.numPages):
                         output = PdfFileWriter()
                         output.addPage(inputpdf.getPage(i))
-                        with open("document-page%s.pdf" % i, "wb") as outputStream:
+                        split_name=names[i].split(",")
+                        file_name=split_name[0][0]+split_name[1][0]+"_"+patient_ids[i]+"_"+sub_directory.name.split(' ')[1]
+                        with open(file_name, "wb") as outputStream:
                             output.write(outputStream)
 
             else:
