@@ -250,13 +250,13 @@ def matchesFinder(path_to_png, path_to_xml):
     os.mkdir(f'{path_to_xml}/unmatched')
 
     # Moves matches into the proper folder
-    for filename in matches:
-        png_src = f'{path_to_png}/{filename}.png'
-        png_dst = f'{path_to_png}/matches/{filename}.png'
+    for file in matches:
+        png_src = f'{path_to_png}/{file.name}.png'
+        png_dst = f'{path_to_png}/matches/{file.name}.png'
         os.rename(png_src, png_dst)
 
-        xml_src = f'{path_to_xml}/{filename}.xml'
-        xml_dst = f'{path_to_xml}/matches/{filename}.xml'
+        xml_src = f'{path_to_xml}/{file.name}.xml'
+        xml_dst = f'{path_to_xml}/matches/{file.name}.xml'
         os.rename(xml_src, xml_dst)
 
     # Moves unmatched files, ignores subdirectories
@@ -362,14 +362,8 @@ if __name__ == '__main__':
     # Convert PDF files to PNG
     convertPdfToPng(f'/content/data')
 
-    os.mkdir('/content/data/png')
-    os.mkdir('/content/data/png/matches')
-    os.mkdir('/content/data/png/unmatched')
-    os.mkdir('/content/data/xml/matches')
-    os.mkdir('/content/data/xml/unmatched')
+    # Find matches between xml / png and organize files
+    matchesFinder('/content/data/png', '/content/data/xml')
 
     # Rotates PNG and crop to PNG
     imagePreProcess('/content/data/png')
-
-    # Find matches between xml / png and organize files
-    matchesFinder('/content/data/png', '/content/data/xml')
