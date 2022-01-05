@@ -230,15 +230,14 @@ def matchesFinder(path_to_png, path_to_xml):
     """
     # List files in the two directories keeping only the filename without
     # extension
-    png_list = [file.path.split('.')[0].split('/')[-1]
-                for file in os.scandir(path_to_png)]
-    xml_list = [file.path.split('.')[0].split('/')[-1]
-                for file in os.scandir(path_to_xml)]
+    png_list = [file.name.split('.')[0] for file in os.scandir(path_to_png)]
+    xml_list = [file.name.split('.')[0] for file in os.scandir(path_to_xml)]
 
     print('-' * _string_mult)
     print('Finding matches:')
     # Finds the elements in both lists
     matches = set(png_list).intersection(xml_list)
+
     print(f'There are {len(matches)} matches in data.')
     print(f'There are {len(png_list)} png files.')
     print(f'There are {len(xml_list)} xml files.')
