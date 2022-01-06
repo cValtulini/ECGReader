@@ -87,7 +87,7 @@ def loadData(path_to_png, path_to_xml):
     xml_unmatched_path = f'{path_to_xml}/unmatched'
     _existing_unmatched_png=False
     _existing_unmatched_xml=False
-    
+
     # Check if there are files in the unmatched folders
     if len([_ for _ in os.scandir(png_unmatched_path) if _.is_file()]):
         _existing_unmatched_png = True
@@ -127,15 +127,15 @@ def loadData(path_to_png, path_to_xml):
     if _existing_unmatched_png:
         png_unmatched = sorted(
             [_.path for _ in os.scandir(png_unmatched_path)
-            if len(_.name.split('.')) == 2 and _.name.split[1] == 'png']
+            if len(_.name.split('.')) == 2 and _.name.split('.')[1] == 'png']
             )
         data.append(loadUnmatched(png_unmatched, 'png'))
     if _existing_unmatched_xml:
         xml_unmatched = sorted(
             [_.path for _ in os.scandir(xml_unmatched_path)
-            if len(_.name.split('.')) == 2 and _.name.split[1] == 'xml']
+            if len(_.name.split('.')) == 2 and _.name.split('.')[1] == 'xml']
             )
-        data.append(loadUnmatched(png_unmatched, 'xml'))
+        data.append(loadUnmatched(xml_unmatched, 'xml'))
 
     print('-' * _string_mult)
     print('Completed.')
