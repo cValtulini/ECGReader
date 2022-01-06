@@ -26,8 +26,8 @@ def loadPNG(path_to_file):
     """
 
     image=cv2.imread(path_to_file, cv2.IMREAD_GRAYSCALE)
-    norm_image = cv2.normalize(image, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
-    return norm_image
+    #norm_image = cv2.normalize(image, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
+    return image
 
 
 def loadMatches(file_names,path_to_png_matches,path_to_xml_matches):
