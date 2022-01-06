@@ -17,7 +17,7 @@ def loadXML(path_to_file):
     """
 
     ecg = SPxml.getLeads(path_to_file)
-    return np.array([ecg[i]['data'] for i in range(len(ecg))])
+    return np.array([ecg[i]['data'] for i in range(len(ecg))])[:, :5450]
 
 
 def loadPNG(path_to_file):
@@ -47,7 +47,7 @@ def loadMatches(file_names,path_to_png_matches,path_to_xml_matches):
     xml_folder = sorted([file.path for file in os.scandir(path_to_xml_matches)
                         if file_names.count(file.name.split('.')[0])>0])
     for xml_path in xml_folder:
-        xmls.append(loadXML(xml_path)[:, :5450])
+        xmls.append(loadXML(xml_path))
 
     # return lists of pngs and xmls
     return pngs,xmls
