@@ -68,8 +68,7 @@ def loadUnmatched(path_to_files, extension):
         return pngs
     elif extension == 'xml':
         for xml_path in path_to_files:
-            print(xml_path)
-            xmls.append(loadPNG(xml_path))
+            xmls.append(loadXML(xml_path))
         return xmls
 
 
