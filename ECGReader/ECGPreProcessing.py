@@ -94,8 +94,8 @@ def loadData(path_to_png, path_to_xml):
     
     # Reads matches folders
     png_matches = sorted(
-        [_.name.split('.')[0] for _ in os.scandir(png_matches_path)
-        if len(_.name.split('.')) == 2 and _.name.split[1] == 'png']
+        [png.name.split('.')[0] for png in os.scandir(png_matches_path)
+        if len(png.name.split('.')) == 2 and png.name.split[1] == 'png']
         )
     xml_matches = sorted(
         [_.name.split('.')[0] for _ in os.scandir(xml_matches_path)
