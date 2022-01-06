@@ -6,6 +6,7 @@ import cv2
 import SPxml
 import numpy as np
 
+
 # Multiplies the '-' character that separates sections of outputs
 # for some functions
 _string_mult = 100
@@ -28,30 +29,36 @@ def loadPNG(path_to_file):
     image=cv2.imread(path_to_file, cv2.IMREAD_GRAYSCALE)
     #norm_image = cv2.normalize(image, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
 
-    return image
+    return image / image.max()
 
 
-def loadMatches(file_names,path_to_png_matches,path_to_xml_matches):
+def loadMatches(file_names, path_to_png_matches, path_to_xml_matches):
     """
     Loads file in matches folder, requires a list of file names without 
     file extensions and the paths for the two folders for the files
     to match.
     """
-    pngs=[]
-    xmls=[]
+    #pngs=[]
+    #xmls=[]
 
-    png_folder =  sorted([file.path for file in os.scandir(path_to_png_matches)
-                        if file.name.split('.')[0] in file_names ])
-    for png_path in png_folder:
-        pngs.append(loadPNG(png_path))
+    #png_folder =  sorted([file.path for file in os.scandir(path_to_png_matches)
+    #                    if file.name.split('.')[0] in file_names ])
+    
+    #for png_path in png_folder:
+    #    pngs.append(loadPNG(png_path))
+    png_files = [f'{path_to_png_matches}/{file}.png' for file in file_names]
+    xml_files = [f'{path_to_xml_matches}/{file}.png' for file in file_names]
 
-    xml_folder = sorted([file.path for file in os.scandir(path_to_xml_matches)
-                        if file.name.split('.')[0] in file_names])
-    for xml_path in xml_folder:
-        xmls.append(loadXML(xml_path))
+    pngs = np.stack([loadPNG(png) for png in png_files], axis=0)
+    xmls = np.stack([loadXML(xml) for xml in xml_files], axis=0)
+
+    #xml_folder = sorted([file.path for file in os.scandir(path_to_xml_matches)
+    #                    if file.name.split('.')[0] in file_names])
+    #for xml_path in xml_folder:
+    #    xmls.append(loadXML(xml_path))
 
     # return lists of pngs and xmls
-    return pngs,xmls
+    return pngs, xmls
 
 
 def loadUnmatched(path_to_files, extension):
