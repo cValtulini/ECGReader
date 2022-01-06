@@ -93,17 +93,11 @@ def loadData(path_to_png, path_to_xml):
         _existing_unmatched_xml = True
     
     # Reads matches folders
-    png_matches = sorted(_.name.split('.')[0] for _ in os.scandir(png_matches_path)
-                        if len(_.name.split('.')) == 2 and _.name.split[1] == 'png')
-    #png_matches=[]
-    #for png in os.scandir(png_matches_path):
-    #    if len(png.name.split('.')) == 2 and png.name.split[1] == 'png':
-    #        png_matches.append(png.name.split('.')[0])
-    #png_matches=sorted(png_matches)
-
+    png_matches = sorted([_.name.split('.')[0] for _ in os.scandir(png_matches_path)
+                        if len(_.name.split('.')) == 2 and _.name.split('.')[1] == 'png'])
 
     xml_matches = sorted([_.name.split('.')[0] for _ in os.scandir(xml_matches_path)
-                        if len(_.name.split('.')) == 2 and _.name.split[1] == 'xml'])
+                        if len(_.name.split('.')) == 2 and _.name.split('.')[1] == 'xml'])
 
     matches = set(png_matches).intersection(xml_matches)
     # set: png_matches - xml_matches
