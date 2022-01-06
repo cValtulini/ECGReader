@@ -119,7 +119,7 @@ def loadData(path_to_png, path_to_xml):
     data = []
     # Loops over file in matches calling loadPNG loadXML
     # extend() -> append() but for multiple elements
-    data.extend([loadMatches(matches)])
+    data.extend([loadMatches(matches,png_matches_path,xml_matches_path)])
 
     # Load unmatched files if it's the case to do so
     if _existing_unmatched_png:
