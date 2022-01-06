@@ -18,7 +18,7 @@ def loadXML(path_to_file):
     """
 
     ecg = SPxml.getLeads(path_to_file)
-    return np.array([ecg[i]['data'] for i in range(len(ecg))])[:, :5450]
+    yield np.array([ecg[i]['data'] for i in range(len(ecg))])[:, :5450]
 
 
 def loadPNG(path_to_file):
@@ -26,10 +26,9 @@ def loadPNG(path_to_file):
     Loads a single PNG
     """
 
-    image=cv2.imread(path_to_file, cv2.IMREAD_GRAYSCALE)
-    #norm_image = cv2.normalize(image, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
+    image = cv2.imread(path_to_file, cv2.IMREAD_GRAYSCALE)
 
-    return image / image.max()
+    yield image/image.max()
 
 
 def loadMatches(file_names, path_to_png_matches, path_to_xml_matches):
@@ -129,7 +128,6 @@ def loadData(path_to_png, path_to_xml):
     data = dict()
     # Loops over file in matches calling loadPNG loadXML
     # extend() -> append() but for multiple elements
-    #data.extend([loadMatches(matches,png_matches_path,xml_matches_path)])
     matched_pngs,matched_xmls=loadMatches(matches,png_matches_path,xml_matches_path)
     data.update({"matched_png_files":matched_pngs})
     data.update({"matched_xml_files":matched_xmls})
