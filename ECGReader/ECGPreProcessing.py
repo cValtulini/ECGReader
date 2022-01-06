@@ -118,24 +118,28 @@ def loadData(path_to_png, path_to_xml):
     print('-' * _string_mult)
     print('Loading files...')
 
-    data = []
+    data = dict()
     # Loops over file in matches calling loadPNG loadXML
     # extend() -> append() but for multiple elements
-    data.extend([loadMatches(matches,png_matches_path,xml_matches_path)])
-
+    #data.extend([loadMatches(matches,png_matches_path,xml_matches_path)])
+    matched_pngs,matched_xmls=loadMatches(matches,png_matches_path,xml_matches_path)
+    data.update({"matched_png_files":matched_pngs})
+    data.update({"matched_xml_files":matched_xmls})
     # Load unmatched files if it's the case to do so
     if _existing_unmatched_png:
         png_unmatched = sorted(
             [_.path for _ in os.scandir(png_unmatched_path)
             if len(_.name.split('.')) == 2 and _.name.split('.')[1] == 'png']
             )
-        data.append(loadUnmatched(png_unmatched, 'png'))
+        #data.append(loadUnmatched(png_unmatched, 'png'))
+        data.update({"unmatched_png_files":loadUnmatched(png_unmatched, 'png')})
     if _existing_unmatched_xml:
         xml_unmatched = sorted(
             [_.path for _ in os.scandir(xml_unmatched_path)
             if len(_.name.split('.')) == 2 and _.name.split('.')[1] == 'xml']
             )
-        data.append(loadUnmatched(xml_unmatched, 'xml'))
+        #data.append(loadUnmatched(xml_unmatched, 'xml'))
+        data.update({"unmatched_xml_files":loadUnmatched(xml_unmatched, 'xml')})
 
     print('-' * _string_mult)
     print('Completed.')
