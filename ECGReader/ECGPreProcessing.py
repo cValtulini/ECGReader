@@ -85,7 +85,9 @@ def loadData(path_to_png, path_to_xml):
     xml_matches_path = f'{path_to_xml}/matches'
     png_unmatched_path = f'{path_to_png}/unmatched'
     xml_unmatched_path = f'{path_to_xml}/unmatched'
-
+    _existing_unmatched_png=False
+    _existing_unmatched_xml=False
+    
     # Check if there are files in the unmatched folders
     if len([_ for _ in os.scandir(png_unmatched_path) if _.is_file()]):
         _existing_unmatched_png = True
