@@ -58,6 +58,12 @@ def preprocessData(images, ecg_leads, unmatched_images=None,
     # Computes parameters to create waveform masks
     # Creates waveform masks from leads
     # ecg_leads[:, :, :] -> ecg_leads[:, :, :, height]
+    
+    # Process image per image with waveform mask
+    # (for comparison)
+    # waveform mask has to be transformed in different ways
+    # check article / code
+    
     # Find best match
 
 
