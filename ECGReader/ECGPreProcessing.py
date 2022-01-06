@@ -11,12 +11,6 @@ import numpy as np
 _string_mult = 100
 
 
-#def loadXML(path_to_file):
-#    """
-#    Loads a single XML
-#    """
-#    return SPxml.getLeads(path_to_file)
-
 def loadXML(path_to_file):
     """
     Loads a single XML
@@ -39,7 +33,8 @@ def loadPNG(path_to_file):
 def loadMatches(file_names,path_to_png_matches,path_to_xml_matches):
     """
     Loads file in matches folder, requires a list of file names without 
-    file extensions
+    file extensions and the paths for the two folders for the files
+    to match.
     """
     pngs=[]
     xmls=[]
@@ -48,17 +43,13 @@ def loadMatches(file_names,path_to_png_matches,path_to_xml_matches):
                         if file_names.count(file.name.split('.')[0])>0])
     for png_path in png_folder:
         pngs.append(loadPNG(png_path))
-    #pngs.append(loadPNG(png) for png in png_folder)
 
     xml_folder = sorted([file.path for file in os.scandir(path_to_xml_matches)
                         if file_names.count(file.name.split('.')[0])>0])
-    #xmls.append(loadXML(xml)[:, :5450] for xml in xml_folder)
     for xml_path in xml_folder:
         xmls.append(loadXML(xml_path)[:, :5450])
 
-    # return lists of png and array of xml
-    # images[number_of_matches, number_of_channels, width, height]
-    # ecg_leads[number_of_matches, number_of_leads, number_of_time_samples]
+    # return lists of pngs and xmls
     return pngs,xmls
 
 
@@ -66,13 +57,19 @@ def loadUnmatched(path_to_files, extension):
     """
     !!! Input is a list of paths, not names as in matches
     """
+    pngs=[]
+    xmls=[]
     
     assert extension == 'png' or extension == 'xml', 'Extension not recognised'
 
     if extension == 'png':
-        pass
+        for png_path in path_to_files:
+            pngs.append(loadPNG(png_path))
+        return pngs
     elif extension == 'xml':
-        pass
+        for xml_path in path_to_files:
+            xmls.append(loadPNG(xml_path))
+        return xmls
 
 
 def loadData(path_to_png, path_to_xml):
