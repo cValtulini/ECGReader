@@ -53,6 +53,7 @@ def loadMatches(file_names,path_to_png_matches,path_to_xml_matches):
     xml_folder = sorted([file.path for file in os.scandir(path_to_xml_matches)
                         if file_names.count(file.name.split('.')[0])>0])
     #xmls.append(loadXML(xml)[:, :5450] for xml in xml_folder)
+    print(xml_folder)
     for xml_path in xml_folder:
         pngs.append(loadXML(xml_path)[:, :5450])
 
