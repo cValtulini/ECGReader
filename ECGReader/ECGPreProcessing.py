@@ -11,38 +11,51 @@ import numpy as np
 _string_mult = 100
 
 
+#def loadXML(path_to_file):
+#    """
+#    Loads a single XML
+#    """
+#    return SPxml.getLeads(path_to_file)
+
 def loadXML(path_to_file):
     """
     Loads a single XML
     """
-    return SPxml.getLeads(path_to_file)
+
+    ecg = SPxml.getLeads(path_to_file)
+    return np.array([ecg[i]['data'] for i in range(len(ecg))])
 
 
 def loadPNG(path_to_file):
     """
     Loads a single PNG
     """
-    PNG_file=None
-    PNG_file=cv2.imread(path_to_file)
 
-    if PNG_file is  None:
-        print("Unable to load the Image, check file name")
-    if len(PNG_file.shape) == 3:
-        PNG_file=cv2.cvtColor(PNG_file,cv2.COLOR_BGR2RGB)
+    # File is bgr when it is returned
 
-    return PNG_file
+    return cv2.imread(path_to_file)
 
 
-def loadMatches(file_names):
+def loadMatches(file_names,path_to_png_matches,path_to_xml_matches):
     """
     Loads file in matches folder, requires a list of file names without 
     file extensions
     """
+    pngs=[]
+    xmls=[]
 
-    # return array of png and array of xml
+    png_folder =  sorted([_.path for _ in os.scandir(path_to_png_matches)
+                        if file_names.count(_.name.split('.')[0])>0])
+    pngs.append(loadPNG(png) for png in png_folder)
+
+    xml_folder = sorted([_.path for _ in os.scandir(path_to_xml_matches)
+                        if file_names.count(_.name.split('.')[0])>0])
+    xmls.append(loadXML(xml)[:, :5450] for xml in xml_folder)
+
+    # return lists of png and array of xml
     # images[number_of_matches, number_of_channels, width, height]
     # ecg_leads[number_of_matches, number_of_leads, number_of_time_samples]
-    pass
+    return pngs,xmls
 
 
 def loadUnmatched(path_to_files, extension):
