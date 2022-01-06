@@ -28,7 +28,7 @@ def loadPNG(path_to_file):
 
     image = cv2.imread(path_to_file, cv2.IMREAD_GRAYSCALE)
 
-    return image
+    return image / 255
 
 
 def loadMatches(file_names, path_to_png_matches, path_to_xml_matches):
@@ -50,19 +50,13 @@ def loadUnmatched(path_to_files, extension):
     """
     !!! Input is a list of paths, not names as in matches
     """
-    pngs=[]
-    xmls=[]
     
     assert extension == 'png' or extension == 'xml', 'Extension not recognised'
 
     if extension == 'png':
-        for png_path in path_to_files:
-            pngs.append(loadPNG(png_path))
-        return pngs
+        return np.stack([loadPNG(png) for png in path_to_files], axis=0)
     elif extension == 'xml':
-        for xml_path in path_to_files:
-            xmls.append(loadXML(xml_path))
-        return xmls
+        return np.stack([loadXML(xml) for xml in path_to_files], axis=0)
 
 
 def loadData(path_to_png, path_to_xml):
