@@ -22,7 +22,15 @@ def loadPNG(path_to_file):
     """
     Loads a single PNG
     """
-    pass
+    PNG_file=None
+    PNG_file=cv2.imread(path_to_file)
+
+    if PNG_file is  None:
+        print("Unable to load the Image, check file name")
+    if len(PNG_file.shape) == 3:
+        PNG_file=cv2.cvtColor(PNG_file,cv2.COLOR_BGR2RGB)
+
+    return PNG_file
 
 
 def loadMatches(file_names):
