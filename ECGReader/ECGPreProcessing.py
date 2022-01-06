@@ -44,9 +44,9 @@ def loadMatches(file_names,path_to_png_matches,path_to_xml_matches):
     pngs=[]
     xmls=[]
 
-    png_folder =  sorted([_.path for _ in os.scandir(path_to_png_matches)
-                        if file_names.count(_.name.split('.')[0])>0])
-    print(file_names.count(_.name.split('.')[0]))
+    png_folder =  sorted([file.path for file in os.scandir(path_to_png_matches)
+                        if file_names.count(file.name.split('.')[0])>0])
+    print(png_folder)
     pngs.append(loadPNG(png) for png in png_folder)
 
     xml_folder = sorted([_.path for _ in os.scandir(path_to_xml_matches)
