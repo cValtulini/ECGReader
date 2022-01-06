@@ -15,7 +15,7 @@ def loadXML(path_to_file):
     """
     Loads a single XML
     """
-    pass
+    return SPxml.getLeads(path_to_file)
 
 
 def loadPNG(path_to_file):
