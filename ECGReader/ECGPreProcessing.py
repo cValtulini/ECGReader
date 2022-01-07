@@ -60,6 +60,15 @@ def loadUnmatched(path_to_files, extension):
 """
 
 
+# XML Loading is fast we could load them just to find these params
+def findMaxRange(xml_array):
+    """
+    
+    """
+
+    return (xml_array.max(axis=-1) - xml_array.min(axis=-1)).max()
+
+
 def loadData(path_to_png, path_to_xml):
     """
     Expect the two paths to only contain folders `matches` and `unmatched`, and at least `matches` to contain elements
@@ -141,16 +150,18 @@ def loadData(path_to_png, path_to_xml):
     print('-' * _string_mult)
     print('Completed.')
 
-    return data, len(matches)
+    matches_number = len(matches)
 
-
-# XML Loading is fast we could load them just to find these params
-def findMaxRange(xml_array):
-    """
     
-    """
+    ecg_max_lead_range = findMaxRange(
+        np.stack(
+            [loadXML(f'{png_matches_path}/{file}.xml') for file in matches],
+            axis=0)
+            )
 
-    return (xml_array.max(axis=-1) - xml_array.min(axis=-1)).max()
+    return data, matches_number, ecg_max_lead_range 
+
+
 
 
 # Should we return a 0-255 (?)
@@ -178,23 +189,19 @@ def createWaveformMask(ecg_lead, span):
     return mask
 
 
-def preprocessData(images, ecg_leads, unmatched_images=None, 
-                unmatched_ecg_leads=None, rgb_to_grey=False):
+#, unmatched_images=None, unmatched_ecg_leads=None):
+def findECGBestMatch(matches):
     """
 
     """
-    # Remember to handle unmatched not None
-
-    # Reacts to rgb_to_grey
 
     # Computes parameters to create waveform masks
-    # Creates waveform masks from leads
-    # ecg_leads[:, :, :] -> ecg_leads[:, :, :, height]
     
-    # Process image per image with waveform mask
-    # (for comparison)
+    # Creates waveform masks from leads
+    
     # waveform mask has to be transformed in different ways
-    # check article / code
+    
+    # Compare image per image with waveform mask(s)
     
     # Find best match
 
