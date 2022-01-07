@@ -1,1 +1,0 @@
-Copy the DLL's from .\libxml2-w32\bin to the output directory or your SYSTEM32 directory.

@@ -69,6 +69,7 @@ def findMaxRange(xml_array):
     return (xml_array.max(axis=-1) - xml_array.min(axis=-1)).max()
 
 
+
 def loadData(path_to_png, path_to_xml):
     """
     Expect the two paths to only contain folders `matches` and `unmatched`, and at least `matches` to contain elements
@@ -155,7 +156,7 @@ def loadData(path_to_png, path_to_xml):
     
     ecg_max_lead_range = findMaxRange(
         np.stack(
-            [loadXML(f'{png_matches_path}/{file}.xml') for file in matches],
+            [loadXML(f'{xml_matches_path}/{file}.xml') for file in matches],
             axis=0)
             )
 
@@ -189,13 +190,29 @@ def createWaveformMask(ecg_lead, span):
     return mask
 
 
+def smoothFilter(array):
+    array_shift1 = np.roll(array, 1, axis=-1)[..., 1:-1]
+    array_shift_1 = np.roll(array, -1, axis=-1)[..., 1:-1]
+
+    return np.around((array[..., 1:-1] + array_shift1 + array_shift_1)/3, 1)
+
 #, unmatched_images=None, unmatched_ecg_leads=None):
-def findECGBestMatch(matches):
+def findECGBestMatch(data, matches_number, span):
     """
 
     """
+    
+    generator=data['matches']
+    png,xml=next(generator)
+    
+    mask=[]
+    for i in range(len(xml)):
+        mask.append(createWaveformMask(xml[i], span))
+    
+
 
     # Computes parameters to create waveform masks
+
     
     # Creates waveform masks from leads
     
@@ -205,5 +222,5 @@ def findECGBestMatch(matches):
     
     # Find best match
 
-
+    #returns a png of the dimensions of the ecg with 12 waveform masks attached to it
     pass
