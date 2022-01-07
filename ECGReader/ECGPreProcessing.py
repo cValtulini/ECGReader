@@ -18,7 +18,7 @@ def loadXML(path_to_file):
     """
 
     ecg = SPxml.getLeads(path_to_file)
-    return np.array([ecg[i]['data'] for i in range(len(ecg))])[:, :5450]
+    return np.array([ecg[i]['data'] for i in range(len(ecg))])#[:, :5450]
 
 
 def loadPNG(path_to_file):
@@ -28,7 +28,7 @@ def loadPNG(path_to_file):
 
     image = cv2.imread(path_to_file, cv2.IMREAD_GRAYSCALE)
 
-    return image / 255
+    return 1 - (image / 255)
 
 
 def loadMatches(file_names, path_to_png_matches, path_to_xml_matches):
@@ -37,19 +37,19 @@ def loadMatches(file_names, path_to_png_matches, path_to_xml_matches):
     file extensions and the paths for the two folders for the files
     to match.
     """
-    png_files = [f'{path_to_png_matches}/{file}.png' for file in file_names]
-    xml_files = [f'{path_to_xml_matches}/{file}.xml' for file in file_names]
 
-    pngs = np.stack([loadPNG(png) for png in png_files], axis=0)
-    xmls = np.stack([loadXML(xml) for xml in xml_files], axis=0)
+    #return pngs, xmls generator
+    for file in file_names:
+        png_file = f'{path_to_png_matches}/{file}.png'
+        xml_file = f'{path_to_xml_matches}/{file}.xml'
 
-    return pngs, xmls
+        yield (loadPNG(png_file), loadXML(xml_file))
 
-
+"""
 def loadUnmatched(path_to_files, extension):
-    """
+    """ """
     !!! Input is a list of paths, not names as in matches
-    """
+    """ """
     
     assert extension == 'png' or extension == 'xml', 'Extension not recognised'
 
@@ -57,6 +57,7 @@ def loadUnmatched(path_to_files, extension):
         return np.stack([loadPNG(png) for png in path_to_files], axis=0)
     elif extension == 'xml':
         return np.stack([loadXML(xml) for xml in path_to_files], axis=0)
+"""
 
 
 def loadData(path_to_png, path_to_xml):
@@ -70,23 +71,26 @@ def loadData(path_to_png, path_to_xml):
 
     png_matches_path = f'{path_to_png}/matches'
     xml_matches_path = f'{path_to_xml}/matches'
-    png_unmatched_path = f'{path_to_png}/unmatched'
-    xml_unmatched_path = f'{path_to_xml}/unmatched'
-    _existing_unmatched_png=False
-    _existing_unmatched_xml=False
+    #png_unmatched_path = f'{path_to_png}/unmatched'
+    #xml_unmatched_path = f'{path_to_xml}/unmatched'
+    #_existing_unmatched_png=False
+    #_existing_unmatched_xml=False
 
     # Check if there are files in the unmatched folders
+    """
     if len([_ for _ in os.scandir(png_unmatched_path) if _.is_file()]):
         _existing_unmatched_png = True
     if len([_ for _ in os.scandir(xml_unmatched_path) if _.is_file()]):
         _existing_unmatched_xml = True
-    
-    # Reads matches folders
-    png_matches = sorted([_.name.split('.')[0] for _ in os.scandir(png_matches_path)
-                        if len(_.name.split('.')) == 2 and _.name.split('.')[1] == 'png'])
+    """
 
-    xml_matches = sorted([_.name.split('.')[0] for _ in os.scandir(xml_matches_path)
-                        if len(_.name.split('.')) == 2 and _.name.split('.')[1] == 'xml'])
+    # Reads matches folders
+    png_matches = sorted(
+        [_.name.split('.')[0] for _ in os.scandir(png_matches_path)
+        if len(_.name.split('.')) == 2 and _.name.split('.')[1] == 'png'])
+    xml_matches = sorted(
+        [_.name.split('.')[0] for _ in os.scandir(xml_matches_path)
+        if len(_.name.split('.')) == 2 and _.name.split('.')[1] == 'xml'])
 
     matches = set(png_matches).intersection(xml_matches)
     # set: png_matches - xml_matches
@@ -106,11 +110,17 @@ def loadData(path_to_png, path_to_xml):
     print('Loading files...')
 
     data = dict()
-    # Loops over file in matches calling loadPNG loadXML
-    # extend() -> append() but for multiple elements
-    matched_pngs,matched_xmls=loadMatches(matches,png_matches_path,xml_matches_path)
-    data.update({"matched_png_files":matched_pngs})
-    data.update({"matched_xml_files":matched_xmls})
+
+    # matched_pngs, matched_xmls = 
+    matches_generator = loadMatches(matches,
+        png_matches_path,
+        xml_matches_path
+        )
+    data.update({"matches": matches_generator})
+    #data.update({"matches_png_files":matched_pngs})
+    #data.update({"matches_xml_files":matched_xmls})
+
+    """
     # Load unmatched files if it's the case to do so
     if _existing_unmatched_png:
         png_unmatched = sorted(
@@ -126,11 +136,46 @@ def loadData(path_to_png, path_to_xml):
             )
         #data.append(loadUnmatched(xml_unmatched, 'xml'))
         data.update({"unmatched_xml_files":loadUnmatched(xml_unmatched, 'xml')})
+    """
 
     print('-' * _string_mult)
     print('Completed.')
 
-    return data
+    return data, len(matches)
+
+
+# XML Loading is fast we could load them just to find these params
+def findMaxRange(xml_array):
+    """
+    
+    """
+
+    return (xml_array.max(axis=-1) - xml_array.min(axis=-1)).max()
+
+
+# Should we return a 0-255 (?)
+def createWaveformMask(ecg_lead, span):
+    """
+    
+    """
+    # Creates the mask image background with width = the number of time samples
+    # and height = span*10 since we know the resolution is 0.1 -> 1/0.1 is the 
+    # expansion factor we need to map values to integers (pixel's positions)
+    mask = np.zeros(shape=(int(span*10), ecg_lead.shape[-1]), dtype=np.uint8)
+
+    # Creates the vector of indexes to map the digital data onto the image 
+    # (mask)
+    # We have a range of values going from negative to positive, but in 
+    # the image the top left position is 0 and indexes grow moving towards the 
+    # bottom left -> we subtract out lead's maximum value to map it to 0 and # invert the sign, we then multiply by the expansion coefficient and cast 
+    # to int for indexing 
+    indexes = (-(ecg_lead-ecg_lead.max())*10).astype(np.int32)
+
+    # index over the computed indexes coupled with a "time axis" to set to 1 
+    # pixel corresponding to waveform points
+    mask[indexes, np.arange(0, ecg_lead.shape[-1])] = 1
+
+    return mask
 
 
 def preprocessData(images, ecg_leads, unmatched_images=None, 
