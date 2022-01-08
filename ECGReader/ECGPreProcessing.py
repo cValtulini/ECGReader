@@ -35,7 +35,7 @@ def loadMatches(file_paths):
 
 def loadData(path_to_png):
     """
-    Expect the two paths to only contain folders `matches` and `unmatched`, and at least `matches` to contain elements
+    Expect the two paths to only contain folders `matches` and `unmatched`, and at least `matches` to contain elements
     Returns a list containing the proper number of arrays based on folders and folders content ordered as png_matches xml_matches 
     """
 
@@ -79,7 +79,7 @@ def adjustTemplate(template):
     Cut additional background from a binary template
     """
 
-    limits = np.where(temp > 0)
+    limits = np.where(template > 0)
     return template[limits[0].min():limits[0].max()+1,
                 limits[1].min():limits[1].max()+1]
 
@@ -93,7 +93,9 @@ def extractWaveformMasks(path_to_ecgs, path_to_templates, path_for_masks):
     data, matches_path = loadData(path_to_ecgs)
     gen = data["matches"]
 
-    temp = adjustTemplate(loadPNG(f'{path_to_templates}/triangle_temp.png'))
+    temp = adjustTemplate(
+        loadPNG(f'{path_to_templates}/triangle_temp.png', binary=True)
+        )
 
     print('-'* _string_mult)
 
@@ -125,3 +127,6 @@ def extractWaveformMasks(path_to_ecgs, path_to_templates, path_for_masks):
             continue
 
         cv2.imwrite(f'{path_for_masks}/{match}.png', mask, [cv2.IMWRITE_PNG_BILEVEL, 1])
+
+    print('Completed.')
+    print('-'* _string_mult)
