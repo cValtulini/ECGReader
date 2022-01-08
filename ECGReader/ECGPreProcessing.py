@@ -162,8 +162,6 @@ def loadData(path_to_png, path_to_xml):
     return data, matches_number, ecg_max_lead_range 
 
 
-
-
 # Should we return a 0-255 (?)
 def createWaveformMask(ecg_lead, span):
     """
@@ -180,7 +178,7 @@ def createWaveformMask(ecg_lead, span):
     # the image the top left position is 0 and indexes grow moving towards the 
     # bottom left -> we subtract out lead's maximum value to map it to 0 and # invert the sign, we then multiply by the expansion coefficient and cast 
     # to int for indexing 
-    indexes = (-(ecg_lead-ecg_lead.max())*10).astype(np.int32)
+    indexes = (-(ecg_lead-ecg_lead.max())*10).astype(np.uint16)
 
     # index over the computed indexes coupled with a "time axis" to set to 1 
     # pixel corresponding to waveform points
@@ -197,13 +195,14 @@ def findECGBestMatch(matches):
 
     # Computes parameters to create waveform masks
     
-    # Creates waveform masks from leads
-    
-    # waveform mask has to be transformed in different ways
-    
-    # Compare image per image with waveform mask(s)
-    
-    # Find best match
+
+        # Creates waveform masks from leads
+        
+        # waveform mask has to be transformed in different ways
+        
+        # Compare image per image with waveform mask(s)
+        
+        # Find best match
 
 
     pass
