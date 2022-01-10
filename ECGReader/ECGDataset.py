@@ -6,19 +6,17 @@ Defines the main utilities for loading the ECGDataset
 _string_mult = 100
 
 
-# maybe utilities functions
-# We should create a ECGUtils.py or import from preprocessing.py if needed
-# better avoid write things twice
-
-
-# or maybe it should inherit from some dataset class from tensorflow
 class ECGDataset(object):
 
-    def __init__(self):
-        pass
+    # TODO: Should call load or something like that to load ecgs and masks, should also
+    #  implement "distortion" parameters as function parameters
+    def __init__(self, parameters):
+        # TODO: they will be keras.preprocessing.ImageDataGenerator object(s)
+        self.ECGs = None
+        self.masks = None
 
     def foo(self, bar):
         pass
     
-    def load(self):
+    def loadDataset(self):
         pass
