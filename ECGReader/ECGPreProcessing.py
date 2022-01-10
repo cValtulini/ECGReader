@@ -132,9 +132,6 @@ def gridRemoval(img, std_coeff):
         An array of 0/1 values with 0 for background and 1 for the signal
 
     """
-    """
-    
-    """
 
     while np.sum(img > img.mean() + std_coeff * img.std()) == 0:
         std_coeff -= 0.05
