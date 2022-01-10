@@ -10,3 +10,4 @@
 .idea/other.xml
 .idea/vcs.xml
 *.ipynb
+ECGReader/testNotebook.ipynb
