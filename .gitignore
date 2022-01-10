@@ -1,5 +1,4 @@
 
-ECGReader/testNotebook.ipynb
 */.DS_Store
 .idea
 .idea/codeStyles/codeStyleConfig.xml
@@ -10,3 +9,4 @@ ECGReader/testNotebook.ipynb
 .idea/modules.xml
 .idea/other.xml
 .idea/vcs.xml
+*.ipynb
