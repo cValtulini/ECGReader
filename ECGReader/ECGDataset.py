@@ -29,5 +29,4 @@ class ECGDataset(object):
 
 
     def loadDataset(self):
-        # EMPTY COMMENT
         pass
