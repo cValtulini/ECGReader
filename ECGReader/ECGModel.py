@@ -138,7 +138,7 @@ if __name__ == '__main__':
 
     # Select patches
     ecg_masks_set = ecg_masks_set.filter(
-        lambda x, y: tf.math.greater(tf.math.count_nonzero(y), 0)
+        lambda x, y: tf.math.greater(tf.math.count_nonzero(y), 351) #527 was found as one third of the average of nonzero values in the masks dataset
         )
     ecg_masks_set = ecg_masks_set.batch(batch_size=1)
 
