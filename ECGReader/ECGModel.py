@@ -125,9 +125,9 @@ if __name__ == '__main__':
         )
 
 
-    #masks_set = masks_set.apply(tf.data.experimental.assert_cardinality(n_patches))
-    #mask_count = masks_set.cardinality().numpy()
-    #print(mask_count)
+    masks_set = masks_set.apply(tf.data.experimental.assert_cardinality(np.int64(n_patches)))
+    mask_count = masks_set.cardinality().numpy()
+    print(mask_count)
 
     # Create a single dataset from the two sets
     ecg_set = ecg_set.unbatch()
