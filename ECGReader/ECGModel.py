@@ -136,7 +136,7 @@ if __name__ == '__main__':
 
     print(ecg_masks_set.element_spec)
 
-    ## We find the average number of nonzero pixels here
+    ## We find the average number of nonzero pixels in the masks here
     # somma=0
     # for ecg, mask in ecg_masks_set.take(mask_count):
     #     somma+=np.count_nonzero(mask)
@@ -149,10 +149,15 @@ if __name__ == '__main__':
     ecg_masks_set = ecg_masks_set.batch(batch_size=1)
 
 
-    #useless check on the empty masks
+    # Check on the empty masks
     # for ecg, mask in ecg_masks_set:
     #     if np.count_nonzero(mask)==0:
     #         print("Empty mask found")
+
+    ecg_set_filtered = ecg_masks_set.map(lambda a, b: a)
+    mask_set_filtered = ecg_masks_set.map(lambda a, b: b)
+
+
 
     # I think it will be best to apply transformations after selection if we apply them
     # through tf.data.Dataset.map(), I've seen there are a bunch of tf.image functions
