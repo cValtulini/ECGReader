@@ -154,9 +154,21 @@ if __name__ == '__main__':
     #     if np.count_nonzero(mask)==0:
     #         print("Empty mask found")
     
-    # Unpack dataset to have back the mask and ecg datasets filtered
+    # Unpack dataset to have back the masks and ecgs datasets filtered
     ecg_set_filtered = ecg_masks_set.map(lambda a, b: a)
     mask_set_filtered = ecg_masks_set.map(lambda a, b: b)
+
+    # Here we perform the dataset division in train and validation, by slicing it
+    # so that we have a 3/1 train/validation split. 
+    # Meaning 3 records will go to training, then 1 record to validation, then repeat.
+    # The flat_map(lambda ds: ds) is because window() returns the results in batches, 
+    # which we don't want. So we flatten it back out.
+    split = 3
+    ecg_train = ecg_set_filtered.window(split, split + 1).flat_map(lambda ds: ds)
+    mask_train = ecg_set_filtered.window(split, split + 1).flat_map(lambda ds: ds)
+    ecg_validation = ecg_set_filtered.skip(split).window(1, split + 1).flat_map(lambda ds: ds)
+    mask_validation = ecg_set_filtered.skip(split).window(1, split + 1).flat_map(lambda ds: ds)
+
 
 
 
