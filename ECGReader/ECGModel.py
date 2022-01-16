@@ -33,6 +33,9 @@ if __name__ == '__main__':
     new_shape = (patch_size*int((original_height//2)//patch_size),
                  patch_size*int((original_width//2)//patch_size))
 
+    n_images = 77     
+    n_patches = (((new_shape[0] - patch_size) / stride_size) + 1) * (((new_shape[1] - patch_size) / stride_size) + 1) * n_images
+
     # Creating a generator to load images for the Dataset
     ecg_gen = ImageDataGenerator(
         rescale=1. / 255
@@ -122,7 +125,9 @@ if __name__ == '__main__':
         )
 
 
-
+    #masks_set = masks_set.apply(tf.data.experimental.assert_cardinality(n_patches))
+    #mask_count = masks_set.cardinality().numpy()
+    #print(mask_count)
 
     # Create a single dataset from the two sets
     ecg_set = ecg_set.unbatch()
