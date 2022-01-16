@@ -136,9 +136,15 @@ if __name__ == '__main__':
 
     print(ecg_masks_set.element_spec)
 
+    ## We find the average number of nonzero pixels here
+    # somma=0
+    # for ecg, mask in ecg_masks_set.take(mask_count):
+    #     somma+=np.count_nonzero(mask)
+    # average_nonzero_pixels=somma/mask_count
+
     # Select patches
     ecg_masks_set = ecg_masks_set.filter(
-        lambda x, y: tf.math.greater(tf.math.count_nonzero(y), 351) #527 was found as one third of the average of nonzero values in the masks dataset
+        lambda x, y: tf.math.greater(tf.math.count_nonzero(y), 351) #351 was found as one third of the average of nonzero values in the masks dataset
         )
     ecg_masks_set = ecg_masks_set.batch(batch_size=1)
 
