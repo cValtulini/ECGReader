@@ -20,9 +20,8 @@ class ECGDataset(object):
         # TODO: when loading masks check if it's needed to modify their creation to use
         #  values in 0-255
         # TODO: we should definitely implement a way to divide images into patches:
-        #  check cv2 or skimage
-        self.ECGs= None
-        #self.masks = None
+        self.ECGs = None
+        self.masks = None
 
 
     def foo(self, bar):
