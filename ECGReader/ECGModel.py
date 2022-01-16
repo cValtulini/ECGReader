@@ -121,6 +121,9 @@ if __name__ == '__main__':
             )
         )
 
+
+
+
     # Create a single dataset from the two sets
     ecg_set = ecg_set.unbatch()
     masks_set = masks_set.unbatch()
@@ -134,9 +137,11 @@ if __name__ == '__main__':
         )
     ecg_masks_set = ecg_masks_set.batch(batch_size=1)
 
-    for ecg, mask in ecg_masks_set:
-        if tf.math.count_nonzero(mask==0):
-            print('Whooops')
+
+    #useless check on the empty masks
+    # for ecg, mask in ecg_masks_set:
+    #     if np.count_nonzero(mask)==0:
+    #         print("Empty mask found")
 
     # I think it will be best to apply transformations after selection if we apply them
     # through tf.data.Dataset.map(), I've seen there are a bunch of tf.image functions
