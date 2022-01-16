@@ -135,7 +135,7 @@ if __name__ == '__main__':
     ecg_masks_set = ecg_masks_set.batch(batch_size=1)
 
     for ecg, mask in ecg_masks_set:
-        if tf.math.count_nonzero(mask):
+        if tf.math.count_nonzero(mask==0):
             print('Whooops')
 
     # I think it will be best to apply transformations after selection if we apply them
