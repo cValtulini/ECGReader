@@ -153,9 +153,12 @@ if __name__ == '__main__':
     # for ecg, mask in ecg_masks_set:
     #     if np.count_nonzero(mask)==0:
     #         print("Empty mask found")
-
+    
+    # Unpack dataset to have back the mask and ecg datasets filtered
     ecg_set_filtered = ecg_masks_set.map(lambda a, b: a)
     mask_set_filtered = ecg_masks_set.map(lambda a, b: b)
+
+
 
 
 
