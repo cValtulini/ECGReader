@@ -166,9 +166,9 @@ if __name__ == '__main__':
     # which we don't want. So we flatten it back out.
     split = 3
     ecg_train = ecg_set_filtered.window(split, split + 1).flat_map(lambda ds: ds)
-    mask_train = ecg_set_filtered.window(split, split + 1).flat_map(lambda ds: ds)
+    mask_train = mask_set_filtered.window(split, split + 1).flat_map(lambda ds: ds)
     ecg_validation = ecg_set_filtered.skip(split).window(1, split + 1).flat_map(lambda ds: ds)
-    mask_validation = ecg_set_filtered.skip(split).window(1, split + 1).flat_map(lambda ds: ds)
+    mask_validation = mask_set_filtered.skip(split).window(1, split + 1).flat_map(lambda ds: ds)
 
 
 
