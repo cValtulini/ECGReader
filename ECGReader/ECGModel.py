@@ -142,9 +142,10 @@ if __name__ == '__main__':
     #     somma+=np.count_nonzero(mask)
     # average_nonzero_pixels=somma/mask_count
 
-    # Select patches
+    # Select patches that have a certain amount of signal in it,
+    # 351 was found as one third of the average of nonzero values in the masks dataset
     ecg_masks_set = ecg_masks_set.filter(
-        lambda x, y: tf.math.greater(tf.math.count_nonzero(y), 351) #351 was found as one third of the average of nonzero values in the masks dataset
+        lambda x, y: tf.math.greater(tf.math.count_nonzero(y), 351) 
         )
     ecg_masks_set = ecg_masks_set.batch(batch_size=1)
 
