@@ -176,8 +176,6 @@ if __name__ == '__main__':
         lambda ds: ds
         )
 
-    print(ecg_train.element_spec)
-
     # I think it will be best to apply transformations after selection if we apply them
     # through tf.data.Dataset.map(), I've seen there are a bunch of tf.image functions
     # (it's better to use those for speed and memory reasons) for preprocessing but
