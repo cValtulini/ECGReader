@@ -4,7 +4,7 @@ Adds the installation directory to the system path
 """
 import os
 
-#os.system('mv ./ECGReader/spxml .')
+os.system('mv ./ECGReader/spxml .')
 
 print("Installing spxml: ")
 os.chdir('spxml')
