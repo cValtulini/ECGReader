@@ -33,8 +33,10 @@ if __name__ == '__main__':
     new_shape = (patch_size*int((original_height//2)//patch_size),
                  patch_size*int((original_width//2)//patch_size))
 
-    n_images = 77     
-    n_patches = (((new_shape[0] - patch_size) / stride_size) + 1) * (((new_shape[1] - patch_size) / stride_size) + 1) * n_images
+    n_images = 77
+    n_row_patches = (((new_shape[0] - patch_size) / stride_size) + 1)
+    n_col_patches = (((new_shape[1] - patch_size) / stride_size) + 1)
+    n_patches = n_row_patches * n_col_patches * n_images
 
     # Creating a generator to load images for the Dataset
     ecg_gen = ImageDataGenerator(
@@ -124,8 +126,9 @@ if __name__ == '__main__':
             )
         )
 
-
-    masks_set = masks_set.apply(tf.data.experimental.assert_cardinality(np.int64(n_patches)))
+    masks_set = masks_set.apply(
+        tf.data.experimental.assert_cardinality(np.int64(n_patches))
+        )
     mask_count = masks_set.cardinality().numpy()
     print(mask_count)
 
@@ -136,7 +139,7 @@ if __name__ == '__main__':
 
     print(ecg_masks_set.element_spec)
 
-    ## We find the average number of nonzero pixels in the masks here
+    # We find the average number of nonzero pixels in the masks here
     # somma=0
     # for ecg, mask in ecg_masks_set.take(mask_count):
     #     somma+=np.count_nonzero(mask)
@@ -145,35 +148,35 @@ if __name__ == '__main__':
     # Select patches that have a certain amount of signal in it,
     # 351 was found as one third of the average of nonzero values in the masks dataset
     ecg_masks_set = ecg_masks_set.filter(
-        lambda x, y: tf.math.greater(tf.math.count_nonzero(y), 351) 
+        lambda x, y: tf.math.greater(tf.math.count_nonzero(y), 0)
         )
     ecg_masks_set = ecg_masks_set.batch(batch_size=1)
-
 
     # Check on the empty masks
     # for ecg, mask in ecg_masks_set:
     #     if np.count_nonzero(mask)==0:
     #         print("Empty mask found")
-    
+
     # Unpack dataset to have back the masks and ecgs datasets filtered
     ecg_set_filtered = ecg_masks_set.map(lambda a, b: a)
     mask_set_filtered = ecg_masks_set.map(lambda a, b: b)
 
     # Here we perform the dataset division in train and validation, by slicing it
-    # so that we have a 3/1 train/validation split. 
+    # so that we have a 3/1 train/validation split.
     # Meaning 3 records will go to training, then 1 record to validation, then repeat.
-    # The flat_map(lambda ds: ds) is because window() returns the results in batches, 
+    # The flat_map(lambda ds: ds) is because window() returns the results in batches,
     # which we don't want. So we flatten it back out.
     split = 3
     ecg_train = ecg_set_filtered.window(split, split + 1).flat_map(lambda ds: ds)
     mask_train = mask_set_filtered.window(split, split + 1).flat_map(lambda ds: ds)
-    ecg_validation = ecg_set_filtered.skip(split).window(1, split + 1).flat_map(lambda ds: ds)
-    mask_validation = mask_set_filtered.skip(split).window(1, split + 1).flat_map(lambda ds: ds)
+    ecg_validation = ecg_set_filtered.skip(split).window(1, split + 1).flat_map(
+        lambda ds: ds
+        )
+    mask_validation = mask_set_filtered.skip(split).window(1, split + 1).flat_map(
+        lambda ds: ds
+        )
 
-
-
-
-
+    print(ecg_train.element_spec)
 
     # I think it will be best to apply transformations after selection if we apply them
     # through tf.data.Dataset.map(), I've seen there are a bunch of tf.image functions

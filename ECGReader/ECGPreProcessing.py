@@ -3,6 +3,7 @@ Creates mask etc.
 """
 import os
 import cv2
+import SPxml
 import numpy as np
 from tqdm import tqdm
 
@@ -11,7 +12,16 @@ from tqdm import tqdm
 _string_mult = 100
 
 
-def loadPNG(path_to_file, binary=False):
+def loadXML(path_to_file):
+    """
+    Loads a single XML
+    """
+
+    ecg = SPxml.getLeads(path_to_file)
+    return np.array([ecg[i]['data'] for i in range(len(ecg))])
+
+
+def loadPNG(path_to_file, mask=False):
     """
     loadPNG loads a png with opencv `imread` given the path.
     
@@ -32,8 +42,8 @@ def loadPNG(path_to_file, binary=False):
 
     """
 
-    if binary:
-        return cv2.imread(path_to_file, cv2.IMREAD_UNCHANGED)
+    if mask:
+        return cv2.imread(path_to_file, cv2.IMREAD_GRAYSCALE)
     else:
         return 255 - cv2.imread(path_to_file, cv2.IMREAD_GRAYSCALE)
 
@@ -111,80 +121,23 @@ def loadData(path_to_png):
     return data, png_matches
 
 
-def gridRemoval(img, std_coeff):
-    """
-    gridRemoval removes the grid from color inverted PNG files of ECGs based on the
-    image grayscale values mean and standard deviation (multiplied by a coefficient).
-    While the output binary image sum is 0 progressively reduces the coefficient
-    multiplying the standard deviation.
-
-    Parameters
-    ----------
-    img: numpy.ndarray, shape=(W, H)
-        The grayscale image, assuming it is color inverted
-
-    std_coeff: float
-        The coefficient multiplying the standard deviation
-
-    Returns
-    -------
-    : numpy.ndarray, shape=(W, H), dtype=np.uint8
-        An array of 0/1 values with 0 for background and 1 for the signal
-
-    """
-
-    while np.sum(img > img.mean() + std_coeff * img.std()) == 0:
-        std_coeff -= 0.05
-
-    return (img > img.mean() + std_coeff * img.std()).astype(np.uint8)
-
-
-def adjustTemplate(template):
-    """
-    adjustTemplate given an image as a numpy array resize it removing eventual border
-    where
-    all pixels
-    on the border's line are 0.
-
-    Parameters
-    ----------
-    template: numpy.ndarray
-        The image to cut
-
-    Returns
-    -------
-    : numpy.ndarray
-        The input array without external border where all the border's line is made of
-        0 values
-
-    """
-
-    limits = np.where(template > 0)
-    return template[limits[0].min():limits[0].max() + 1, limits[1].min():limits[1].max() + 1]
-
-
-def extractWaveformMasks(path_to_ecgs, path_to_templates, path_for_masks):
+def extractWaveformMasks(path_to_xml, path_to_save):
     """
     extractWaveformMasks saves PNG files of waveform masks extracted from PNG of ECGs
     extracted from digitally printed PDFs.
 
     Parameters
     ----------
-    path_to_ecgs: String
-        The path to the folder containing PNG images to load and from which to extract
-        waveform masks, have to be divided into `matches` and `unmatched`
-    path_to_templates: String
-        Path to the folder containing templates of element to be removed from the
-        waveform mask after grid removal
-    path_for_masks: String
-        Path to the folder in which to save the generated waveform mask
+    path_to_xml :
+
+    path_to_save :
+
 
     Returns
     -------
     Nothing
 
     """
-    # TODO: if needed modify to use more than just one template
 
     data, matches_path = loadData(path_to_ecgs)
     gen = data["matches"]
