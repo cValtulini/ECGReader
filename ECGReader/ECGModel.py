@@ -188,9 +188,13 @@ if __name__ == '__main__':
             )
         )
 
+    print(ecg_set.element_spec)
+
+    for img in ecg_set.take(5):
+        show(img[0, :, :, 0])
+
     ecg_set = createPatchesSet(ecg_set, ecg_patch_shape, ecg_stride)
     mask_set = createPatchesSet(mask_set, mask_patch_shape, mask_stride)
-
 
     for img, mask in zip(ecg_set.take(2), mask_set.take(2)):
         i = 0
