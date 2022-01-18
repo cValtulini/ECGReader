@@ -18,101 +18,101 @@ def show(img):
     plt.show()
 
 
+def loadDataset(img_gen, img_shape, path, batch_size=1, seed=42,
+                color_mode='grayscale', name=None):
+    # We need images.shape and images.dtype as parameters of
+    # `tf.data.Dataset.from_generator`
+    images = next(
+        img_gen.flow_from_directory(
+            path, target_size=img_shape, class_mode=None, seed=seed,
+            color_mode=color_mode, batch_size=batch_size
+            )
+        )
+
+    print('-' * _string_mult)
+    print(f'Loading dataset from {path}:')
+
+    spec = tf.TensorSpec(images.shape, dtype=images.dtype, name=name)
+
+    print(f'TensorSpec: {spec}')
+
+    # Creating the data set from the ImageDataGenerator object.
+    data_set = tf.data.Dataset.from_generator(
+        lambda: img_gen.flow_from_directory(
+            path, target_size=img_shape, class_mode=None, seed=seed,
+            color_mode=color_mode, batch_size=batch_size
+            ),
+        output_signature=spec
+        )
+
+    print(tf.data.experimental.cardinality(data_set))
+
+    print('Sets loaded.')
+    print('-' * _string_mult)
+
+    return data_set
+
+
 if __name__ == '__main__':
     # Load images and masks as tf.data.Dataset loading from ImageDataGenerator
     _, path = argv
     ecg_path = os.path.join(path, 'png/matches/img')
     masks_path = os.path.join(path, 'png/matches/masks')
 
-    # TODO: Substitute with masks values
-    original_mask_shape = (9082, 4410)
+    ecg_train_path = os.path.join(ecg_path, 'train')
+    ecg_val_path = os.path.join(ecg_path, 'val')
+    ecg_test_path = os.path.join(ecg_path, 'train')
 
-    subs_coeff = 5
+    ecg_rows = 6
+    ecg_cols = 2
 
-    # TODO: Verify these after creating masks images
-    mask_shape = (int(original_mask_shape[0] // subs_coeff),
-                  int(original_mask_shape[1] // subs_coeff))
+    # Number of patches for each lead on the time axis (width)
+    time_patch_lead = 10
 
-    mask_track_shape = (int(mask_shape[0] // 6), int(mask_shape[1] // 2))
+    # TODO: Substitute masks values
+    original_mask_shape = (3053, 8001)
+    original_ecg_shape = (4410, 9082)
 
-    n_time_patch = 10
-    mask_stride_size_hor = mask_track_shape[1] // n_time_patch
-    mask_patch_shape = (mask_track_shape[0], mask_stride_size_hor * 2)
+    mask_subs_coeff = 5
+    ecg_subs_coeff = 5
+
+    # Roughly, the track length is not exactly half the width of the image but this is
+    # already considered in the creation of the mask adding proper white spaces
+    mask_lead_shape = (original_mask_shape[0] // mask_subs_coeff // ecg_rows,
+                       original_mask_shape[1] // mask_subs_coeff // ecg_cols)
+    ecg_lead_shape = (original_ecg_shape[0] // ecg_subs_coeff // ecg_rows,
+                      original_ecg_shape[1] // ecg_subs_coeff // ecg_cols)
+
+    mask_shape = (mask_lead_shape[0] * ecg_rows, mask_lead_shape[1] * ecg_cols)
+    ecg_shape = (ecg_lead_shape[0] * ecg_rows, ecg_lead_shape[1] * ecg_cols)
+
+    mask_stride = (mask_lead_shape[0], mask_lead_shape[1] // time_patch_lead)
+    ecg_stride = (ecg_lead_shape[1], ecg_lead_shape[1] // time_patch_lead)
+
+    mask_patch_shape = (mask_lead_shape[0], mask_stride[1] * 2)
+    ecg_patch_shape = (ecg_lead_shape[0] * 2, ecg_stride[1] * 2)
 
     n_patches_row = ((mask_shape[1] - mask_patch_shape[1]) // mask_patch_shape[1]) + 1
-    n_patches_col = ((mask_shape[0] - mask_patch_shape[0]) // mask_stride_size_hor) + 1
-    n_patches_image = int(n_patches_row * n_patches_row)
+    n_patches_col = ((mask_shape[0] - mask_patch_shape[0]) // time_patch_lead) + 1
+    n_patches_image = n_patches_row * n_patches_row
 
-    # TODO: Compute ECG patch / stride shapes
+    ecg_pad = ecg_lead_shape[0] // 2
 
     # TODO: Check after train/val/test split
-    train_set_card = 49
-    val_set_card = 14
+    train_set_card = 48
+    val_set_card = 15
     test_set_card = 14
 
     n_train_patches = n_patches_image * train_set_card
     n_val_patches = n_patches_image * val_set_card
     n_test_patches = n_patches_image * test_set_card
 
-    # n_patches = n_row_patches * n_col_patches * n_images
-    #
-    # img_shape = (patch_size*int((original_height//2)//patch_size),
-    #              patch_size*int((original_width//2)//patch_size))
-
     # Creating a generator to load images for the Dataset
-    ecg_gen = ImageDataGenerator(
-        rescale=1. / 255
-        )
-    masks_gen = ImageDataGenerator(
+    image_gen = ImageDataGenerator(
         rescale=1. / 255
         )
 
-    # We need train_images.shape and train_images.dtype (same for test_images) as
-    # parameters of `tf.data.Dataset.from_generator`
-    # ecg_images = next(
-    #     ecg_gen.flow_from_directory(
-    #         ecg_path, target_size=new_shape, class_mode=None, seed=42,
-    #         color_mode='grayscale', batch_size=1
-    #         )
-    #     )
-    # masks_images = next(
-    #     masks_gen.flow_from_directory(
-    #         masks_path, target_size=new_shape, class_mode=None, seed=42,
-    #         color_mode='grayscale', batch_size=1
-    #         )
-    #     )
-
-    # print('-' * _string_mult)
-    # print('Shapes:')
-    # print(ecg_images.shape)
-    # print(masks_images.shape)
-
-    print('-' * _string_mult)
-    print('Loading sets')
-
-    # Creating the data set from the ImageDataGenerator objects we previously
-    # initialized.
-    # ecg_set = tf.data.Dataset.from_generator(
-    #     lambda: ecg_gen.flow_from_directory(
-    #         ecg_path, target_size=new_shape,
-    #         class_mode=None, seed=42, color_mode='grayscale', batch_size=1
-    #         ),
-    #     output_types=ecg_images.dtype,
-    #     output_shapes=ecg_images.shape,
-    #     name='ecg'
-    #     )
-    # masks_set = tf.data.Dataset.from_generator(
-    #     lambda: masks_gen.flow_from_directory(
-    #         masks_path, target_size=new_shape,
-    #         class_mode=None, seed=42, color_mode='grayscale', batch_size=1
-    #         ),
-    #     output_types=masks_images.dtype,
-    #     output_shapes=masks_images.shape,
-    #     name='mask'
-    #     )
-
-    print('Sets loaded.')
-    print('-' * _string_mult)
+    ecg_set = loadDataset(image_gen, ecg_shape, ecg_path, name='ecg')
 
     # Prints information about the elements of the data_set, in particular dtype and
     # shape, a note about this:
