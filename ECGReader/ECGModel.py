@@ -18,13 +18,30 @@ def show(img):
     plt.show()
 
 
-def loadDataset(img_gen, img_shape, path, batch_size=1, seed=42,
+def loadDataset(img_gen, img_shape, img_path, n_images, batch_size=1, seed=42,
                 color_mode='grayscale', name=None):
+    """
+
+    Parameters
+    ----------
+    img_gen
+    img_shape
+    img_path
+    n_images
+    batch_size
+    seed
+    color_mode
+    name
+
+    Returns
+    -------
+
+    """
     # We need images.shape and images.dtype as parameters of
     # `tf.data.Dataset.from_generator`
     images = next(
         img_gen.flow_from_directory(
-            path, target_size=img_shape, class_mode=None, seed=seed,
+            img_path, target_size=img_shape, class_mode=None, seed=seed,
             color_mode=color_mode, batch_size=batch_size
             )
         )
@@ -39,16 +56,61 @@ def loadDataset(img_gen, img_shape, path, batch_size=1, seed=42,
     # Creating the data set from the ImageDataGenerator object.
     data_set = tf.data.Dataset.from_generator(
         lambda: img_gen.flow_from_directory(
-            path, target_size=img_shape, class_mode=None, seed=seed,
+            img_path, target_size=img_shape, class_mode=None, seed=seed,
             color_mode=color_mode, batch_size=batch_size
             ),
         output_signature=spec
         )
 
-    print(tf.data.experimental.cardinality(data_set))
+    data_set = data_set.apply(
+        tf.data.experimental.assert_cardinality(n_images)
+        )
 
-    print('Sets loaded.')
+    print('Spec:')
+    print(data_set.element_spec)
+
+    print('Loaded.')
     print('-' * _string_mult)
+
+    return data_set
+
+
+def createPatchesSet(data_set, patch_shape, stride_shape):
+    """
+
+    Parameters
+    ----------
+    data_set
+    patch_shape
+    stride_shape
+
+    Returns
+    -------
+
+    """
+
+    original_card = tf.data.experimental.cardinality(data_set)
+    original_shape = (data_set.element_spec.shape[1], data_set.element_spec.shape[2])
+
+    data_set = data_set.map(
+        lambda x: tf.reshape(
+            tf.image.extract_patches(
+                x, sizes=[1, patch_shape[0], patch_shape[1], 1],
+                strides=[1, stride_shape[0], stride_shape[1], 1],
+                rates=[1, 1, 1, 1],
+                padding='VALID'
+                ),
+            [-1, patch_shape[0], patch_shape[1], 1]
+            )
+        )
+
+    n_patches_row = ((original_shape[1] - patch_shape[1]) // stride_shape[1]) + 1
+    n_patches_col = ((original_shape[0] - patch_shape[0]) // stride_shape[0]) + 1
+    n_patches = n_patches_row * n_patches_col
+
+    data_set = data_set.apply(
+        tf.data.experimental.assert_cardinality(original_card * n_patches)
+        )
 
     return data_set
 
@@ -56,12 +118,18 @@ def loadDataset(img_gen, img_shape, path, batch_size=1, seed=42,
 if __name__ == '__main__':
     # Load images and masks as tf.data.Dataset loading from ImageDataGenerator
     _, path = argv
+
     ecg_path = os.path.join(path, 'png/matches/img')
-    masks_path = os.path.join(path, 'png/matches/masks')
+
+    mask_path = os.path.join(path, 'png/matches/masks')
 
     ecg_train_path = os.path.join(ecg_path, 'train')
     ecg_val_path = os.path.join(ecg_path, 'val')
     ecg_test_path = os.path.join(ecg_path, 'train')
+
+    mask_train_path = os.path.join(mask_path, 'train')
+    mask_val_path = os.path.join(mask_path, 'val')
+    mask_test_path = os.path.join(mask_path, 'train')
 
     ecg_rows = 6
     ecg_cols = 2
@@ -70,7 +138,7 @@ if __name__ == '__main__':
     time_patch_lead = 10
 
     # TODO: Substitute masks values
-    original_mask_shape = (3053, 8001)
+    original_mask_shape = (3149, 6102)
     original_ecg_shape = (4410, 9082)
 
     mask_subs_coeff = 5
@@ -92,64 +160,41 @@ if __name__ == '__main__':
     mask_patch_shape = (mask_lead_shape[0], mask_stride[1] * 2)
     ecg_patch_shape = (ecg_lead_shape[0] * 2, ecg_stride[1] * 2)
 
-    n_patches_row = ((mask_shape[1] - mask_patch_shape[1]) // mask_patch_shape[1]) + 1
-    n_patches_col = ((mask_shape[0] - mask_patch_shape[0]) // time_patch_lead) + 1
-    n_patches_image = n_patches_row * n_patches_row
+    print(f'mask patches: {mask_patch_shape}')
+    print(f'ecg patches: {ecg_patch_shape}')
 
     ecg_pad = ecg_lead_shape[0] // 2
 
-    # TODO: Check after train/val/test split
     train_set_card = 48
     val_set_card = 15
     test_set_card = 14
-
-    n_train_patches = n_patches_image * train_set_card
-    n_val_patches = n_patches_image * val_set_card
-    n_test_patches = n_patches_image * test_set_card
 
     # Creating a generator to load images for the Dataset
     image_gen = ImageDataGenerator(
         rescale=1. / 255
         )
 
-    ecg_set = loadDataset(image_gen, ecg_shape, ecg_path, name='ecg')
+    ecg_set = loadDataset(image_gen, ecg_shape, ecg_path, 77, name='ecg')
+    mask_set = loadDataset(image_gen, mask_shape, mask_path, 77, name='mask')
 
-    # Prints information about the elements of the data_set, in particular dtype and
-    # shape, a note about this:
-    # According to the guide (cited later) if I understood correctly all the element in
-    # a dataset (batches?) have the same characteristic, element_spec return the
-    # specification of
-    # a single one.
-    # print('ECGs:')
-    # print(ecg_set.element_spec)
-    # print('Masks: ')
-    # print(masks_set.element_spec)
+    # Pad ECG
+    ecg_set = ecg_set.map(
+        lambda x: tf.image.pad_to_bounding_box(
+            x, ecg_pad, 0,
+            x.shape[1] + 2 * ecg_pad, x.shape[2]
+            )
+        )
 
-    # Divide into patches
-    # ecg_set = ecg_set.map(
-    #     lambda x: tf.reshape(tf.image.extract_patches(
-    #             x, sizes=[1, patch_size, patch_size, 1],
-    #             strides=[1, stride_size, stride_size, 1],
-    #             rates=[1, 1, 1, 1],
-    #             padding='VALID'
-    #             ),
-    #         [-1, patch_size, patch_size, 1]
-    #         )
-    #     )
-    # masks_set = masks_set.map(
-    #     lambda x: tf.reshape(tf.image.extract_patches(
-    #             x, sizes=[1, patch_size, patch_size, 1],
-    #             strides=[1, stride_size, stride_size, 1],
-    #             rates=[1, 1, 1, 1],
-    #             padding='VALID'
-    #             ),
-    #         [-1, patch_size, patch_size, 1]
-    #         )
-    #     )
-    #
-    # masks_set = masks_set.apply(
-    #     tf.data.experimental.assert_cardinality(np.int64(n_patches))
-    #     )
+    ecg_set = createPatchesSet(ecg_set, ecg_patch_shape, ecg_stride)
+    mask_set = createPatchesSet(mask_set, mask_patch_shape, mask_stride)
+
+    i = 0
+    for img, mask in zip(ecg_set.take(1), mask_set.take(1)):
+        while i < 10:
+            show(img[i, :, :, 0])
+            show(mask[i, :, :, 0])
+            i += 1
+
     # mask_count = masks_set.cardinality().numpy()
     # print(mask_count)
 
