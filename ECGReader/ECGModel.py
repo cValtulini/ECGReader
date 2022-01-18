@@ -19,7 +19,7 @@ def show(img):
 
 
 def loadDataset(img_gen, img_shape, img_path, n_images, batch_size=1, seed=42,
-                color_mode='grayscale', name=None):
+                color_mode='grayscale', name=None, color_invert=True):
     """
 
     Parameters
@@ -61,6 +61,9 @@ def loadDataset(img_gen, img_shape, img_path, n_images, batch_size=1, seed=42,
             ),
         output_signature=spec
         )
+
+    if color_invert:
+        data_set = data_set.map(lambda x: 1 - x)
 
     data_set = data_set.apply(
         tf.data.experimental.assert_cardinality(n_images)
@@ -141,7 +144,7 @@ if __name__ == '__main__':
     original_mask_shape = (3149, 6102)
     original_ecg_shape = (4410, 9082)
 
-    mask_subs_coeff = 5
+    mask_subs_coeff = 3
     ecg_subs_coeff = 5
 
     # Roughly, the track length is not exactly half the width of the image but this is
@@ -188,9 +191,10 @@ if __name__ == '__main__':
     ecg_set = createPatchesSet(ecg_set, ecg_patch_shape, ecg_stride)
     mask_set = createPatchesSet(mask_set, mask_patch_shape, mask_stride)
 
-    i = 0
-    for img, mask in zip(ecg_set.take(1), mask_set.take(1)):
-        while i < 10:
+
+    for img, mask in zip(ecg_set.take(2), mask_set.take(2)):
+        i = 0
+        while i < 19:
             show(img[i, :, :, 0])
             show(mask[i, :, :, 0])
             i += 1
