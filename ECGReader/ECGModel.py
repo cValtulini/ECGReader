@@ -8,14 +8,13 @@ from keras.preprocessing.image import ImageDataGenerator
 from matplotlib import pyplot as plt
 import imgaug
 from imgaug import augmenters as iaa
-from tensorflow.python.ops.numpy_ops import np_config
-
-np_config.enable_numpy_behavior()
+# from tensorflow.python.ops.numpy_ops import np_config
 
 
 _string_mult = 100
 
 imgaug.seed(42)
+# np_config.enable_numpy_behavior()
 
 
 def show(img):
@@ -80,7 +79,7 @@ def loadDataset(img_gen, img_shape, img_path, n_images, batch_size=1, seed=42, n
     return data_set
 
 
-def augmentPatch(patch):
+def augmentPatch():
     augmenter = iaa.SomeOf((1, None), [
             iaa.Add([-30, 30]),
             iaa.AdditiveGaussianNoise(scale=(0, 0.2 * 255), per_channel=True),
@@ -88,12 +87,12 @@ def augmentPatch(patch):
             iaa.SaltAndPepper((0.01, 0.2), per_channel=True),
             iaa.GaussianBlur(sigma=(0.01, 1.0)),
             iaa.MotionBlur(k=(3, 5)),
-            #iaa.imgcorruptlike.DefocusBlur(severity=1),  # iaa.imgcorruptlike works only on uint8 images, we have float32
-            #iaa.imgcorruptlike.ZoomBlur(severity=1),
-            #iaa.imgcorruptlike.Saturate(severity=1),
-            #iaa.imgcorruptlike.Spatter(severity=1),
+            iaa.imgcorruptlike.DefocusBlur(severity=1),
+            iaa.imgcorruptlike.ZoomBlur(severity=1),
+            iaa.imgcorruptlike.Saturate(severity=1),
+            iaa.imgcorruptlike.Spatter(severity=1),
             ])
-    return augmenter(images=patch)
+    return augmenter
 
 
 def createPatchesSet(data_set, patch_shape, stride_shape, augment=False,
@@ -138,16 +137,22 @@ def createPatchesSet(data_set, patch_shape, stride_shape, augment=False,
         )
 
     if augment:
+        in_type = data_set.element_spec.dtype
+
+        data_set.map(lambda x: tf.cast(x, tf.uint8))
+        augmenter = augmentPatch()
+
         data_set = data_set.map(
-            lambda x : tf.numpy_function(
-                func=augmentPatch().augment_images, inp=[(x)], Tout=tf.float32
+            lambda x: tf.numpy_function(
+                func=augmenter.augment_images, inp=[x], Tout=tf.uint8
                 )
         )
+
+        data_set.map(lambda x: tf.cast(x, in_type))
 
     if grayscale:
         data_set = data_set.map(tf.image.grayscale_to_rgb)
 
-    data_set = data_set.map(lambda x: tf.cast(x, tf.float32))
     data_set = data_set.map(lambda x: x / 255)
 
     if color_invert:
@@ -166,11 +171,11 @@ if __name__ == '__main__':
 
     ecg_train_path = os.path.join(ecg_path, 'train')
     ecg_val_path = os.path.join(ecg_path, 'val')
-    ecg_test_path = os.path.join(ecg_path, 'train')
+    ecg_test_path = os.path.join(ecg_path, 'test')
 
     mask_train_path = os.path.join(mask_path, 'train')
     mask_val_path = os.path.join(mask_path, 'val')
-    mask_test_path = os.path.join(mask_path, 'train')
+    mask_test_path = os.path.join(mask_path, 'test')
 
     ecg_rows = 6
     ecg_cols = 2
@@ -225,7 +230,7 @@ if __name__ == '__main__':
     ecg_set = createPatchesSet(ecg_set, ecg_patch_shape, ecg_stride, augment=True)
     mask_set = createPatchesSet(mask_set, mask_patch_shape, mask_stride)
 
-    for ecg,mask in zip(ecg_set.take(3),mask_set.take(3)):
+    for ecg, mask in zip(ecg_set.take(3), mask_set.take(3)):
         i = 0
         while i < 19:
             show(ecg[i, :, :, 0])
