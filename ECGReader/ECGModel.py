@@ -8,6 +8,9 @@ from keras.preprocessing.image import ImageDataGenerator
 from matplotlib import pyplot as plt
 import imgaug
 from imgaug import augmenters as iaa
+from tensorflow.python.ops.numpy_ops import np_config
+
+np_config.enable_numpy_behavior()
 
 
 _string_mult = 100
@@ -50,7 +53,7 @@ def loadDataset(img_gen, img_shape, img_path, n_images, batch_size=1, seed=42, n
     print('-' * _string_mult)
     print(f'Loading dataset from {path}:')
 
-    spec = tf.TensorSpec(images.shape, dtype=tf.uint8, name=name)
+    spec = tf.TensorSpec(images.shape, dtype=tf.float32, name=name)
 
     print(f'TensorSpec: {spec}')
 
@@ -81,7 +84,7 @@ def augmentPatch():
             iaa.Add([-30, 30]),
             iaa.AdditiveGaussianNoise(scale=(0, 0.2), per_channel=True),
             iaa.Multiply((0.4, 1.6)),
-            #iaa.SaltAndPepper((0.01, 0.02), per_channel=True),
+            iaa.SaltAndPepper((0.01, 0.02), per_channel=True),
             iaa.GaussianBlur(sigma=(0.01, 1.0)),
             iaa.MotionBlur(k=(3, 5)),
             #iaa.imgcorruptlike.DefocusBlur(severity=1),  #imgcorruptlike works only on uint8 images
@@ -141,7 +144,8 @@ def createPatchesSet(data_set, patch_shape, stride_shape, augment=False,
     if grayscale:
         data_set = data_set.map(tf.image.grayscale_to_rgb)
 
-    data_set = data_set.map(lambda x: tf.cast(x, tf.float32)).map(lambda x: x / 255)
+    data_set = data_set.map(lambda x: tf.cast(x, tf.float32))
+    data_set = data_set.map(lambda x: x / 255)
 
     if color_invert:
         data_set = data_set.map(lambda x: 1 - x)
@@ -218,7 +222,7 @@ if __name__ == '__main__':
     ecg_set = createPatchesSet(ecg_set, ecg_patch_shape, ecg_stride, augment=True)
     mask_set = createPatchesSet(mask_set, mask_patch_shape, mask_stride)
 
-    for image in ecg_set.take(10):
+    for image in ecg_set.take(1):
         i = 0
         while i < 19:
             show(image[i, :, :, 0])
