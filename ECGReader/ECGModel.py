@@ -8,12 +8,16 @@ from keras.preprocessing.image import ImageDataGenerator
 from matplotlib import pyplot as plt
 import imgaug
 from imgaug import augmenters as iaa
+
+
 # from tensorflow.python.ops.numpy_ops import np_config
 
 
 _string_mult = 100
 
 imgaug.seed(42)
+
+
 # np_config.enable_numpy_behavior()
 
 
@@ -55,8 +59,6 @@ def loadDataset(img_gen, img_shape, img_path, n_images, batch_size=1, seed=42, n
 
     spec = tf.TensorSpec(images.shape, dtype=images.dtype, name=name)
 
-    print(f'TensorSpec: {spec}')
-
     # Creating the data set from the ImageDataGenerator object.
     data_set = tf.data.Dataset.from_generator(
         lambda: img_gen.flow_from_directory(
@@ -79,31 +81,44 @@ def loadDataset(img_gen, img_shape, img_path, n_images, batch_size=1, seed=42, n
     return data_set
 
 
-def augmentPatch():
-    augmenter = iaa.SomeOf((1, None), [
-            iaa.OneOf([
-                iaa.Add([-30, 30]),
-                iaa.Multiply((0.6, 1.4))
-                    ]),
-            iaa.OneOf([
-                iaa.OneOf([
-                    iaa.AdditiveGaussianNoise(scale=(0, 0.2 * 255), per_channel=True),
-                    iaa.SaltAndPepper((0.01, 0.2), per_channel=True)
-                    ]),
-                iaa.GaussianBlur(sigma=(0.01, 1.0)),
-                iaa.MotionBlur(k=(3, 5))
-                ]),
-            iaa.OneOf([
-                iaa.imgcorruptlike.DefocusBlur(severity=1),
-                iaa.imgcorruptlike.ZoomBlur(severity=1)
-                    ]),
-            iaa.imgcorruptlike.Saturate(severity=1)
-            ])
+def createAugmenter():
+    augmenter = iaa.SomeOf(
+        (1, None), [
+                iaa.OneOf(
+                    [
+                            iaa.Add([-30, 30]),
+                            iaa.Multiply((0.6, 1.4))
+                            ]
+                    ),
+                iaa.OneOf(
+                    [
+                            iaa.OneOf(
+                                [
+                                        iaa.AdditiveGaussianNoise(
+                                            scale=(0, 0.2 * 255), per_channel=True
+                                            ),
+                                        iaa.SaltAndPepper((0.01, 0.2), per_channel=True)
+                                        ]
+                                ),
+                            iaa.GaussianBlur(sigma=(0.01, 1.0)),
+                            iaa.MotionBlur(k=(3, 5))
+                            ]
+                    ),
+                iaa.OneOf(
+                    [
+                            iaa.imgcorruptlike.DefocusBlur(severity=1),
+                            iaa.imgcorruptlike.ZoomBlur(severity=1)
+                            ]
+                    ),
+                iaa.imgcorruptlike.Saturate(severity=1)
+                ]
+        )
     return augmenter
 
 
-def createPatchesSet(data_set, patch_shape, stride_shape, augment=False,
-                     grayscale=True, color_invert=True):
+def createPatchesSet(data_set, patch_shape, stride_shape, pad_horizontal=False,
+                     pad_horizontal_size=None, augment=False, grayscale=True,
+                     color_invert=True):
     """
 
     Parameters
@@ -111,6 +126,8 @@ def createPatchesSet(data_set, patch_shape, stride_shape, augment=False,
     data_set
     patch_shape
     stride_shape
+    pad_horizontal
+    pad_horizontal_size
     augment
     grayscale
     color_invert
@@ -125,6 +142,17 @@ def createPatchesSet(data_set, patch_shape, stride_shape, augment=False,
 
     if color_invert:
         data_set = data_set.map(lambda x: 255.0 - x)
+
+    if pad_horizontal:
+        if isinstance(pad_horizontal_size, type(None)):
+            print('No pad size set. Padding not added.')
+        else:
+            data_set = data_set.map(
+                lambda x: tf.image.pad_to_bounding_box(
+                    x, pad_horizontal_size, 0, x.shape[1] + 2 * pad_horizontal_size,
+                    x.shape[2]
+                    )
+                )
 
     data_set = data_set.map(
         lambda x: tf.reshape(
@@ -148,19 +176,23 @@ def createPatchesSet(data_set, patch_shape, stride_shape, augment=False,
 
     if augment:
         in_type = data_set.element_spec.dtype
+        in_batch_size = data_set.element_spec.shape[0]
 
-        augmenter = augmentPatch()
+        data_set = data_set.unbatch()
 
+        augmenter = createAugmenter()
         data_set = data_set.map(
             lambda x: tf.numpy_function(
                 func=augmenter.augment_images, inp=[tf.cast(x, tf.uint8)], Tout=tf.uint8
                 )
-        )
+            )
+
+        data_set = data_set.batch(in_batch_size)
 
         data_set.map(lambda x: tf.cast(x, in_type))
 
     if grayscale:
-        data_set = data_set.map(tf.image.grayscale_to_rgb)
+        data_set = data_set.map(tf.image.rgb_to_grayscale)
 
     data_set = data_set.map(lambda x: x / 255)
 
@@ -213,7 +245,7 @@ if __name__ == '__main__':
     print(f'mask patches: {mask_patch_shape}')
     print(f'ecg patches: {ecg_patch_shape}')
 
-    ecg_pad = ecg_lead_shape[0] // 2
+    ecg_pad = ecg_lead_shape[0] // 2  # TODO: Check if the problem in patches is here
 
     train_set_card = 48
     val_set_card = 15
@@ -225,18 +257,14 @@ if __name__ == '__main__':
     ecg_set = loadDataset(image_gen, ecg_shape, ecg_path, 77, name='ecg')
     mask_set = loadDataset(image_gen, mask_shape, mask_path, 77, name='mask')
 
-    # Pad ECG
-    ecg_set = ecg_set.map(
-        lambda x: tf.image.pad_to_bounding_box(
-            x, ecg_pad, 0,
-            x.shape[1] + 2 * ecg_pad, x.shape[2]
-            )
-        )
-
-    ecg_set = createPatchesSet(ecg_set, ecg_patch_shape, ecg_stride, augment=True)
+    ecg_set = createPatchesSet(ecg_set, ecg_patch_shape, ecg_stride, pad_horizontal=True,
+                               pad_horizontal_size=ecg_pad, augment=True)
     mask_set = createPatchesSet(mask_set, mask_patch_shape, mask_stride)
 
-    for ecg, mask in zip(ecg_set.take(3), mask_set.take(3)):
+    print(ecg_set.element_spec)
+    print(mask_set.element_spec)
+
+    for ecg, mask in zip(ecg_set.take(1), mask_set.take(1)):
         i = 0
         while i < 19:
             show(ecg[i, :, :, 0])
