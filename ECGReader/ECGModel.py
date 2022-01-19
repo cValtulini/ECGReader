@@ -14,6 +14,7 @@ _string_mult = 100
 
 imgaug.seed(42)
 
+
 def show(img):
     plt.figure()
     plt.imshow(img, cmap='gray')
@@ -50,7 +51,7 @@ def loadDataset(img_gen, img_shape, img_path, n_images, batch_size=1, seed=42, n
     print('-' * _string_mult)
     print(f'Loading dataset from {path}:')
 
-    spec = tf.TensorSpec(images.shape, dtype=tf.uint8, name=name)
+    spec = tf.TensorSpec(images.shape, dtype=images.dtype, name=name)
 
     print(f'TensorSpec: {spec}')
 
@@ -66,6 +67,8 @@ def loadDataset(img_gen, img_shape, img_path, n_images, batch_size=1, seed=42, n
     data_set = data_set.apply(
         tf.data.experimental.assert_cardinality(n_images)
         )
+
+    data_set = data_set.map(lambda x: tf.cast(x, tf.uint8))
 
     print('Spec:')
     print(data_set.element_spec)
@@ -85,7 +88,7 @@ def augmentPatch(patch):
             iaa.GaussianBlur(sigma=(0.01, 1.0)),
             iaa.MotionBlur(k=(3, 5)),
             iaa.imgcorruptlike.DefocusBlur(severity=1),
-            iaa.imgcorruptlike.ZoomBlur(severity=1),
+            # iaa.imgcorruptlike.ZoomBlur(severity=1),
             iaa.imgcorruptlike.Saturate(severity=1),
             iaa.imgcorruptlike.Spatter(severity=1),
             ])
