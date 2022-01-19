@@ -10,15 +10,9 @@ import imgaug
 from imgaug import augmenters as iaa
 
 
-# from tensorflow.python.ops.numpy_ops import np_config
-
-
 _string_mult = 100
 
 imgaug.seed(42)
-
-
-# np_config.enable_numpy_behavior()
 
 
 def show(img):
@@ -162,7 +156,7 @@ def createPatchesSet(data_set, patch_shape, stride_shape, pad_horizontal=False,
                 rates=[1, 1, 1, 1],
                 padding='VALID'
                 ),
-            [-1, patch_shape[0], patch_shape[1], 1]
+            [-1, patch_shape[0], patch_shape[1], 3]
             )
         )
 
@@ -192,7 +186,7 @@ def createPatchesSet(data_set, patch_shape, stride_shape, pad_horizontal=False,
         data_set.map(lambda x: tf.cast(x, in_type))
 
     if grayscale:
-        data_set = data_set.map(tf.image.rgb_to_grayscale)
+        data_set = data_set.map(lambda x: tf.image.rgb_to_grayscale(x))
 
     data_set = data_set.map(lambda x: x / 255)
 
@@ -245,7 +239,7 @@ if __name__ == '__main__':
     print(f'mask patches: {mask_patch_shape}')
     print(f'ecg patches: {ecg_patch_shape}')
 
-    ecg_pad = ecg_lead_shape[0] // 2  # TODO: Check if the problem in patches is here
+    ecg_pad = ecg_lead_shape[0] // 2
 
     train_set_card = 48
     val_set_card = 15
