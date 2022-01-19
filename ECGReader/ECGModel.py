@@ -80,7 +80,7 @@ def createAugmenter():
         (1, None), [
                 iaa.OneOf(
                     [
-                            iaa.Add([-30, 30]),
+                            iaa.Add([-50, 50]),
                             iaa.Multiply((0.6, 1.4))
                             ]
                     ),
@@ -94,16 +94,10 @@ def createAugmenter():
                                         iaa.SaltAndPepper((0.01, 0.2), per_channel=True)
                                         ]
                                 ),
-                            iaa.GaussianBlur(sigma=(0.01, 1.0)),
-                            iaa.MotionBlur(k=(3, 5))
+                            iaa.GaussianBlur(sigma=(0.01, 1.0))
                             ]
                     ),
-                iaa.OneOf(
-                    [
-                            iaa.imgcorruptlike.DefocusBlur(severity=1),
-                            iaa.imgcorruptlike.ZoomBlur(severity=1)
-                            ]
-                    ),
+                iaa.imgcorruptlike.DefocusBlur(severity=1),
                 iaa.imgcorruptlike.Saturate(severity=1)
                 ]
         )
@@ -222,10 +216,15 @@ if __name__ == '__main__':
     ecg_subs_coeff = 5
 
     # We define mask and ecg overall shape based on patches parameters
+    # TODO: Find out a better way to compute and check parameters for patches and
+    #  stride always keep padding valid
     mask_lead_shape = (original_mask_shape[0] // mask_subs_coeff // ecg_rows,
                        original_mask_shape[1] // mask_subs_coeff // ecg_cols)
-    ecg_lead_shape = (original_ecg_shape[0] // ecg_subs_coeff // ecg_rows,
-                      original_ecg_shape[1] // ecg_subs_coeff // ecg_cols)
+    ecg_lead_shape = [original_ecg_shape[0] // ecg_subs_coeff // ecg_rows,
+                      original_ecg_shape[1] // ecg_subs_coeff // ecg_cols]
+    if ecg_lead_shape[0] % 2 != 0:
+        ecg_lead_shape[0] += 1
+    ecg_lead_shape = tuple(ecg_lead_shape)
 
     mask_stride = (mask_lead_shape[0], mask_lead_shape[1] // t_patch_lead)
     ecg_stride = (ecg_lead_shape[0], ecg_lead_shape[1] // t_patch_lead)
