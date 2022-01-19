@@ -6,10 +6,13 @@ from tensorflow import keras
 from keras import models, layers
 from keras.preprocessing.image import ImageDataGenerator
 from matplotlib import pyplot as plt
+import imgaug
+from imgaug import augmenters as iaa
 
 
 _string_mult = 100
 
+imgaug.seed(42)
 
 def show(img):
     plt.figure()
@@ -18,8 +21,7 @@ def show(img):
     plt.show()
 
 
-def loadDataset(img_gen, img_shape, img_path, n_images, batch_size=1, seed=42,
-                color_mode='grayscale', name=None, color_invert=True):
+def loadDataset(img_gen, img_shape, img_path, n_images, batch_size=1, seed=42, name=None):
     """
 
     Parameters
@@ -30,7 +32,6 @@ def loadDataset(img_gen, img_shape, img_path, n_images, batch_size=1, seed=42,
     n_images
     batch_size
     seed
-    color_mode
     name
 
     Returns
@@ -42,14 +43,14 @@ def loadDataset(img_gen, img_shape, img_path, n_images, batch_size=1, seed=42,
     images = next(
         img_gen.flow_from_directory(
             img_path, target_size=img_shape, class_mode=None, seed=seed,
-            color_mode=color_mode, batch_size=batch_size
+            batch_size=batch_size
             )
         )
 
     print('-' * _string_mult)
     print(f'Loading dataset from {path}:')
 
-    spec = tf.TensorSpec(images.shape, dtype=images.dtype, name=name)
+    spec = tf.TensorSpec(images.shape, dtype=tf.uint8, name=name)
 
     print(f'TensorSpec: {spec}')
 
@@ -57,13 +58,10 @@ def loadDataset(img_gen, img_shape, img_path, n_images, batch_size=1, seed=42,
     data_set = tf.data.Dataset.from_generator(
         lambda: img_gen.flow_from_directory(
             img_path, target_size=img_shape, class_mode=None, seed=seed,
-            color_mode=color_mode, batch_size=batch_size
+            batch_size=batch_size
             ),
         output_signature=spec
         )
-
-    if color_invert:
-        data_set = data_set.map(lambda x: 1 - x)
 
     data_set = data_set.apply(
         tf.data.experimental.assert_cardinality(n_images)
@@ -78,7 +76,24 @@ def loadDataset(img_gen, img_shape, img_path, n_images, batch_size=1, seed=42,
     return data_set
 
 
-def createPatchesSet(data_set, patch_shape, stride_shape):
+def augmentPatch(patch):
+    augmenter = iaa.SomeOf((1, None), [
+            iaa.Add([-30, 30]),
+            iaa.AdditiveGaussianNoise(scale=(0, 0.2 * 255), per_channel=True),
+            iaa.Multiply((0.4, 1.6)),
+            iaa.SaltAndPepper((0.01, 0.2), per_channel=True),
+            iaa.GaussianBlur(sigma=(0.01, 1.0)),
+            iaa.MotionBlur(k=(3, 5)),
+            iaa.imgcorruptlike.DefocusBlur(severity=1),
+            iaa.imgcorruptlike.ZoomBlur(severity=1),
+            iaa.imgcorruptlike.Saturate(severity=1),
+            iaa.imgcorruptlike.Spatter(severity=1),
+            ])
+    return augmenter(images=patch)
+
+
+def createPatchesSet(data_set, patch_shape, stride_shape, augment=False,
+                     grayscale=True, color_invert=True):
     """
 
     Parameters
@@ -86,6 +101,9 @@ def createPatchesSet(data_set, patch_shape, stride_shape):
     data_set
     patch_shape
     stride_shape
+    augment
+    grayscale
+    color_invert
 
     Returns
     -------
@@ -115,6 +133,17 @@ def createPatchesSet(data_set, patch_shape, stride_shape):
         tf.data.experimental.assert_cardinality(original_card * n_patches)
         )
 
+    if augment:
+        data_set = data_set.map(augmentPatch)
+
+    if grayscale:
+        data_set = data_set.map(tf.image.grayscale_to_rgb)
+
+    data_set = data_set.map(lambda x: tf.cast(x, tf.float32)).map(lambda x: x / 255)
+
+    if color_invert:
+        data_set = data_set.map(lambda x: 1 - x)
+
     return data_set
 
 
@@ -138,30 +167,28 @@ if __name__ == '__main__':
     ecg_cols = 2
 
     # Number of patches for each lead on the time axis (width)
-    time_patch_lead = 10
+    t_patch_lead = 10
 
-    # TODO: Substitute masks values
     original_mask_shape = (3149, 6102)
     original_ecg_shape = (4410, 9082)
 
-    mask_subs_coeff = 3
+    mask_subs_coeff = 4
     ecg_subs_coeff = 5
 
-    # Roughly, the track length is not exactly half the width of the image but this is
-    # already considered in the creation of the mask adding proper white spaces
+    # We define mask and ecg overall shape based on patches parameters
     mask_lead_shape = (original_mask_shape[0] // mask_subs_coeff // ecg_rows,
                        original_mask_shape[1] // mask_subs_coeff // ecg_cols)
     ecg_lead_shape = (original_ecg_shape[0] // ecg_subs_coeff // ecg_rows,
                       original_ecg_shape[1] // ecg_subs_coeff // ecg_cols)
 
-    mask_shape = (mask_lead_shape[0] * ecg_rows, mask_lead_shape[1] * ecg_cols)
-    ecg_shape = (ecg_lead_shape[0] * ecg_rows, ecg_lead_shape[1] * ecg_cols)
-
-    mask_stride = (mask_lead_shape[0], mask_lead_shape[1] // time_patch_lead)
-    ecg_stride = (ecg_lead_shape[1], ecg_lead_shape[1] // time_patch_lead)
+    mask_stride = (mask_lead_shape[0], mask_lead_shape[1] // t_patch_lead)
+    ecg_stride = (ecg_lead_shape[0], ecg_lead_shape[1] // t_patch_lead)
 
     mask_patch_shape = (mask_lead_shape[0], mask_stride[1] * 2)
     ecg_patch_shape = (ecg_lead_shape[0] * 2, ecg_stride[1] * 2)
+
+    mask_shape = (mask_lead_shape[0] * ecg_rows, mask_stride[1] * t_patch_lead * ecg_cols)
+    ecg_shape = (ecg_lead_shape[0] * ecg_rows, ecg_stride[1] * t_patch_lead * ecg_cols)
 
     print(f'mask patches: {mask_patch_shape}')
     print(f'ecg patches: {ecg_patch_shape}')
@@ -173,9 +200,7 @@ if __name__ == '__main__':
     test_set_card = 14
 
     # Creating a generator to load images for the Dataset
-    image_gen = ImageDataGenerator(
-        rescale=1. / 255
-        )
+    image_gen = ImageDataGenerator()
 
     ecg_set = loadDataset(image_gen, ecg_shape, ecg_path, 77, name='ecg')
     mask_set = loadDataset(image_gen, mask_shape, mask_path, 77, name='mask')
@@ -188,27 +213,16 @@ if __name__ == '__main__':
             )
         )
 
-    ecg_set = createPatchesSet(ecg_set, ecg_patch_shape, ecg_stride)
+    ecg_set = createPatchesSet(ecg_set, ecg_patch_shape, ecg_stride, augment=True)
     mask_set = createPatchesSet(mask_set, mask_patch_shape, mask_stride)
 
-    for img, mask in zip(ecg_set.take(2), mask_set.take(2)):
+    for image in ecg_set.take(10):
         i = 0
         while i < 19:
-            show(img[i, :, :, 0])
-            show(mask[i, :, :, 0])
+            show(image[i, :, :, 0])
             i += 1
 
-    # mask_count = masks_set.cardinality().numpy()
-    # print(mask_count)
-
-    # Create a single dataset from the two sets
-    # ecg_set = ecg_set.unbatch()
-    # masks_set = masks_set.unbatch()
-    # ecg_masks_set = tf.data.Dataset.zip((ecg_set, masks_set))
-    #
-    # print(ecg_masks_set.element_spec)
-
-    # We find the average number of nonzero pixels in the masks here
+    # We find the average number of nonzero pixels in the masks
     # somma=0
     # for ecg, mask in ecg_masks_set.take(mask_count):
     #     somma+=np.count_nonzero(mask)
