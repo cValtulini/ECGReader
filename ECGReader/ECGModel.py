@@ -89,7 +89,7 @@ def augmentPatch():
             #iaa.imgcorruptlike.Saturate(severity=1),
             #iaa.imgcorruptlike.Spatter(severity=1),
             ])
-    return augmenter()
+    return augmenter
 
 
 def createPatchesSet(data_set, patch_shape, stride_shape, augment=False,
