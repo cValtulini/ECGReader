@@ -83,7 +83,7 @@ def augmentPatch(patch):
             iaa.Multiply((0.4, 1.6)),
             iaa.SaltAndPepper((0.01, 0.2), per_channel=True),
             iaa.GaussianBlur(sigma=(0.01, 1.0)),
-            iaa.MotionBlur(k=(1, 6)),
+            iaa.MotionBlur(k=(3, 5)),
             iaa.imgcorruptlike.DefocusBlur(severity=1),
             iaa.imgcorruptlike.ZoomBlur(severity=1),
             iaa.imgcorruptlike.Saturate(severity=1),
