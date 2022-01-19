@@ -87,7 +87,7 @@ def augmentPatch():
             iaa.SaltAndPepper((0.01, 0.02), per_channel=True),
             iaa.GaussianBlur(sigma=(0.01, 1.0)),
             iaa.MotionBlur(k=(3, 5)),
-            #iaa.imgcorruptlike.DefocusBlur(severity=1),  #imgcorruptlike works only on uint8 images
+            #iaa.imgcorruptlike.DefocusBlur(severity=1),  # iaa.imgcorruptlike works only on uint8 images, we have float32
             #iaa.imgcorruptlike.ZoomBlur(severity=1),
             #iaa.imgcorruptlike.Saturate(severity=1),
             #iaa.imgcorruptlike.Spatter(severity=1),
@@ -138,7 +138,9 @@ def createPatchesSet(data_set, patch_shape, stride_shape, augment=False,
 
     if augment:
         data_set = data_set.map(
-            lambda x : tf.numpy_function(func=augmentPatch().augment_images, inp=[(x)], Tout=tf.float32)
+            lambda x : tf.numpy_function(
+                func=augmentPatch().augment_images, inp=[(x)], Tout=tf.float32
+                )
         )
 
     if grayscale:
@@ -222,10 +224,11 @@ if __name__ == '__main__':
     ecg_set = createPatchesSet(ecg_set, ecg_patch_shape, ecg_stride, augment=True)
     mask_set = createPatchesSet(mask_set, mask_patch_shape, mask_stride)
 
-    for image in ecg_set.take(1):
+    for ecg,mask in zip(ecg_set.take(3),mask_set.take(3)):
         i = 0
         while i < 19:
-            show(image[i, :, :, 0])
+            show(ecg[i, :, :, 0])
+            show(mask[i, :, :, 0])
             i += 1
 
     # We find the average number of nonzero pixels in the masks
