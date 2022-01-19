@@ -18,126 +18,195 @@ def show(img):
     plt.show()
 
 
+def loadDataset(img_gen, img_shape, img_path, n_images, batch_size=1, seed=42,
+                color_mode='grayscale', name=None, color_invert=True):
+    """
+
+    Parameters
+    ----------
+    img_gen
+    img_shape
+    img_path
+    n_images
+    batch_size
+    seed
+    color_mode
+    name
+
+    Returns
+    -------
+
+    """
+    # We need images.shape and images.dtype as parameters of
+    # `tf.data.Dataset.from_generator`
+    images = next(
+        img_gen.flow_from_directory(
+            img_path, target_size=img_shape, class_mode=None, seed=seed,
+            color_mode=color_mode, batch_size=batch_size
+            )
+        )
+
+    print('-' * _string_mult)
+    print(f'Loading dataset from {path}:')
+
+    spec = tf.TensorSpec(images.shape, dtype=images.dtype, name=name)
+
+    print(f'TensorSpec: {spec}')
+
+    # Creating the data set from the ImageDataGenerator object.
+    data_set = tf.data.Dataset.from_generator(
+        lambda: img_gen.flow_from_directory(
+            img_path, target_size=img_shape, class_mode=None, seed=seed,
+            color_mode=color_mode, batch_size=batch_size
+            ),
+        output_signature=spec
+        )
+
+    if color_invert:
+        data_set = data_set.map(lambda x: 1 - x)
+
+    data_set = data_set.apply(
+        tf.data.experimental.assert_cardinality(n_images)
+        )
+
+    print('Spec:')
+    print(data_set.element_spec)
+
+    print('Loaded.')
+    print('-' * _string_mult)
+
+    return data_set
+
+
+def createPatchesSet(data_set, patch_shape, stride_shape):
+    """
+
+    Parameters
+    ----------
+    data_set
+    patch_shape
+    stride_shape
+
+    Returns
+    -------
+
+    """
+
+    original_card = tf.data.experimental.cardinality(data_set)
+    original_shape = (data_set.element_spec.shape[1], data_set.element_spec.shape[2])
+
+    data_set = data_set.map(
+        lambda x: tf.reshape(
+            tf.image.extract_patches(
+                x, sizes=[1, patch_shape[0], patch_shape[1], 1],
+                strides=[1, stride_shape[0], stride_shape[1], 1],
+                rates=[1, 1, 1, 1],
+                padding='VALID'
+                ),
+            [-1, patch_shape[0], patch_shape[1], 1]
+            )
+        )
+
+    n_patches_row = ((original_shape[1] - patch_shape[1]) // stride_shape[1]) + 1
+    n_patches_col = ((original_shape[0] - patch_shape[0]) // stride_shape[0]) + 1
+    n_patches = n_patches_row * n_patches_col
+
+    data_set = data_set.apply(
+        tf.data.experimental.assert_cardinality(original_card * n_patches)
+        )
+
+    return data_set
+
+
 if __name__ == '__main__':
     # Load images and masks as tf.data.Dataset loading from ImageDataGenerator
     _, path = argv
+
     ecg_path = os.path.join(path, 'png/matches/img')
-    masks_path = os.path.join(path, 'png/matches/masks')
 
-    original_width = 9082
-    original_height = 4410
+    mask_path = os.path.join(path, 'png/matches/masks')
 
-    patch_size = 256
-    stride_size = 64
+    ecg_train_path = os.path.join(ecg_path, 'train')
+    ecg_val_path = os.path.join(ecg_path, 'val')
+    ecg_test_path = os.path.join(ecg_path, 'train')
 
-    new_shape = (patch_size*int((original_height//2)//patch_size),
-                 patch_size*int((original_width//2)//patch_size))
+    mask_train_path = os.path.join(mask_path, 'train')
+    mask_val_path = os.path.join(mask_path, 'val')
+    mask_test_path = os.path.join(mask_path, 'train')
 
-    n_images = 77
-    n_row_patches = (((new_shape[0] - patch_size) / stride_size) + 1)
-    n_col_patches = (((new_shape[1] - patch_size) / stride_size) + 1)
-    n_patches = n_row_patches * n_col_patches * n_images
+    ecg_rows = 6
+    ecg_cols = 2
+
+    # Number of patches for each lead on the time axis (width)
+    time_patch_lead = 10
+
+    # TODO: Substitute masks values
+    original_mask_shape = (3149, 6102)
+    original_ecg_shape = (4410, 9082)
+
+    mask_subs_coeff = 3
+    ecg_subs_coeff = 5
+
+    # Roughly, the track length is not exactly half the width of the image but this is
+    # already considered in the creation of the mask adding proper white spaces
+    mask_lead_shape = (original_mask_shape[0] // mask_subs_coeff // ecg_rows,
+                       original_mask_shape[1] // mask_subs_coeff // ecg_cols)
+    ecg_lead_shape = (original_ecg_shape[0] // ecg_subs_coeff // ecg_rows,
+                      original_ecg_shape[1] // ecg_subs_coeff // ecg_cols)
+
+    mask_shape = (mask_lead_shape[0] * ecg_rows, mask_lead_shape[1] * ecg_cols)
+    ecg_shape = (ecg_lead_shape[0] * ecg_rows, ecg_lead_shape[1] * ecg_cols)
+
+    mask_stride = (mask_lead_shape[0], mask_lead_shape[1] // time_patch_lead)
+    ecg_stride = (ecg_lead_shape[1], ecg_lead_shape[1] // time_patch_lead)
+
+    mask_patch_shape = (mask_lead_shape[0], mask_stride[1] * 2)
+    ecg_patch_shape = (ecg_lead_shape[0] * 2, ecg_stride[1] * 2)
+
+    print(f'mask patches: {mask_patch_shape}')
+    print(f'ecg patches: {ecg_patch_shape}')
+
+    ecg_pad = ecg_lead_shape[0] // 2
+
+    train_set_card = 48
+    val_set_card = 15
+    test_set_card = 14
 
     # Creating a generator to load images for the Dataset
-    ecg_gen = ImageDataGenerator(
-        rescale=1. / 255
-        )
-    masks_gen = ImageDataGenerator(
+    image_gen = ImageDataGenerator(
         rescale=1. / 255
         )
 
-    # We need train_images.shape and train_images.dtype (same for test_images) as
-    # parameters of `tf.data.Dataset.from_generator`
-    ecg_images = next(
-        ecg_gen.flow_from_directory(
-            ecg_path, target_size=new_shape, class_mode=None, seed=42,
-            color_mode='grayscale', batch_size=1
-            )
-        )
-    masks_images = next(
-        masks_gen.flow_from_directory(
-            masks_path, target_size=new_shape, class_mode=None, seed=42,
-            color_mode='grayscale', batch_size=1
-            )
-        )
+    ecg_set = loadDataset(image_gen, ecg_shape, ecg_path, 77, name='ecg')
+    mask_set = loadDataset(image_gen, mask_shape, mask_path, 77, name='mask')
 
-    print('-' * _string_mult)
-    print('Shapes:')
-    print(ecg_images.shape)
-    print(masks_images.shape)
-
-    print('-' * _string_mult)
-    print('Loading sets')
-
-    # Creating the data set from the ImageDataGenerator objects we previously
-    # initialized.
-    ecg_set = tf.data.Dataset.from_generator(
-        lambda: ecg_gen.flow_from_directory(
-            ecg_path, target_size=new_shape,
-            class_mode=None, seed=42, color_mode='grayscale', batch_size=1
-            ),
-        output_types=ecg_images.dtype,
-        output_shapes=ecg_images.shape,
-        name='ecg'
-        )
-    masks_set = tf.data.Dataset.from_generator(
-        lambda: masks_gen.flow_from_directory(
-            masks_path, target_size=new_shape,
-            class_mode=None, seed=42, color_mode='grayscale', batch_size=1
-            ),
-        output_types=masks_images.dtype,
-        output_shapes=masks_images.shape,
-        name='mask'
-        )
-
-    print('Sets loaded.')
-    print('-' * _string_mult)
-
-    # Prints information about the elements of the data_set, in particular dtype and
-    # shape, a note about this:
-    # According to the guide (cited later) if I understood correctly all the element in
-    # a dataset (batches?) have the same characteristic, element_spec return the
-    # specification of
-    # a single one.
-    print('ECGs:')
-    print(ecg_set.element_spec)
-    print('Masks: ')
-    print(masks_set.element_spec)
-
-    # Divide into patches
+    # Pad ECG
     ecg_set = ecg_set.map(
-        lambda x: tf.reshape(tf.image.extract_patches(
-                x, sizes=[1, patch_size, patch_size, 1],
-                strides=[1, stride_size, stride_size, 1],
-                rates=[1, 1, 1, 1],
-                padding='VALID'
-                ),
-            [-1, patch_size, patch_size, 1]
-            )
-        )
-    masks_set = masks_set.map(
-        lambda x: tf.reshape(tf.image.extract_patches(
-                x, sizes=[1, patch_size, patch_size, 1],
-                strides=[1, stride_size, stride_size, 1],
-                rates=[1, 1, 1, 1],
-                padding='VALID'
-                ),
-            [-1, patch_size, patch_size, 1]
+        lambda x: tf.image.pad_to_bounding_box(
+            x, ecg_pad, 0,
+            x.shape[1] + 2 * ecg_pad, x.shape[2]
             )
         )
 
-    masks_set = masks_set.apply(
-        tf.data.experimental.assert_cardinality(np.int64(n_patches))
-        )
-    mask_count = masks_set.cardinality().numpy()
-    print(mask_count)
+    ecg_set = createPatchesSet(ecg_set, ecg_patch_shape, ecg_stride)
+    mask_set = createPatchesSet(mask_set, mask_patch_shape, mask_stride)
+
+    for img, mask in zip(ecg_set.take(2), mask_set.take(2)):
+        i = 0
+        while i < 19:
+            show(img[i, :, :, 0])
+            show(mask[i, :, :, 0])
+            i += 1
+
+    # mask_count = masks_set.cardinality().numpy()
+    # print(mask_count)
 
     # Create a single dataset from the two sets
-    ecg_set = ecg_set.unbatch()
-    masks_set = masks_set.unbatch()
-    ecg_masks_set = tf.data.Dataset.zip((ecg_set, masks_set))
-
-    print(ecg_masks_set.element_spec)
+    # ecg_set = ecg_set.unbatch()
+    # masks_set = masks_set.unbatch()
+    # ecg_masks_set = tf.data.Dataset.zip((ecg_set, masks_set))
+    #
+    # print(ecg_masks_set.element_spec)
 
     # We find the average number of nonzero pixels in the masks here
     # somma=0
@@ -147,10 +216,10 @@ if __name__ == '__main__':
 
     # Select patches that have a certain amount of signal in it,
     # 351 was found as one third of the average of nonzero values in the masks dataset
-    ecg_masks_set = ecg_masks_set.filter(
-        lambda x, y: tf.math.greater(tf.math.count_nonzero(y), 0)
-        )
-    ecg_masks_set = ecg_masks_set.batch(batch_size=1)
+    # ecg_masks_set = ecg_masks_set.filter(
+    #     lambda x, y: tf.math.greater(tf.math.count_nonzero(y), 0)
+    #     )
+    # ecg_masks_set = ecg_masks_set.batch(batch_size=1)
 
     # Check on the empty masks
     # for ecg, mask in ecg_masks_set:
@@ -158,25 +227,23 @@ if __name__ == '__main__':
     #         print("Empty mask found")
 
     # Unpack dataset to have back the masks and ecgs datasets filtered
-    ecg_set_filtered = ecg_masks_set.map(lambda a, b: a)
-    mask_set_filtered = ecg_masks_set.map(lambda a, b: b)
+    # ecg_set_filtered = ecg_masks_set.map(lambda a, b: a)
+    # mask_set_filtered = ecg_masks_set.map(lambda a, b: b)
 
     # Here we perform the dataset division in train and validation, by slicing it
     # so that we have a 3/1 train/validation split.
     # Meaning 3 records will go to training, then 1 record to validation, then repeat.
     # The flat_map(lambda ds: ds) is because window() returns the results in batches,
     # which we don't want. So we flatten it back out.
-    split = 3
-    ecg_train = ecg_set_filtered.window(split, split + 1).flat_map(lambda ds: ds)
-    mask_train = mask_set_filtered.window(split, split + 1).flat_map(lambda ds: ds)
-    ecg_validation = ecg_set_filtered.skip(split).window(1, split + 1).flat_map(
-        lambda ds: ds
-        )
-    mask_validation = mask_set_filtered.skip(split).window(1, split + 1).flat_map(
-        lambda ds: ds
-        )
-
-    print(ecg_train.element_spec)
+    # split = 3
+    # ecg_train = ecg_set_filtered.window(split, split + 1).flat_map(lambda ds: ds)
+    # mask_train = mask_set_filtered.window(split, split + 1).flat_map(lambda ds: ds)
+    # ecg_validation = ecg_set_filtered.skip(split).window(1, split + 1).flat_map(
+    #     lambda ds: ds
+    #     )
+    # mask_validation = mask_set_filtered.skip(split).window(1, split + 1).flat_map(
+    #     lambda ds: ds
+    #     )
 
     # I think it will be best to apply transformations after selection if we apply them
     # through tf.data.Dataset.map(), I've seen there are a bunch of tf.image functions
