@@ -81,16 +81,23 @@ def loadDataset(img_gen, img_shape, img_path, n_images, batch_size=1, seed=42, n
 
 def augmentPatch():
     augmenter = iaa.SomeOf((1, None), [
-            iaa.Add([-30, 30]),
-            iaa.AdditiveGaussianNoise(scale=(0, 0.2 * 255), per_channel=True),
-            iaa.Multiply((0.4, 1.6)),
-            iaa.SaltAndPepper((0.01, 0.2), per_channel=True),
-            iaa.GaussianBlur(sigma=(0.01, 1.0)),
-            iaa.MotionBlur(k=(3, 5)),
-            iaa.imgcorruptlike.DefocusBlur(severity=1),
-            iaa.imgcorruptlike.ZoomBlur(severity=1),
-            iaa.imgcorruptlike.Saturate(severity=1),
-            iaa.imgcorruptlike.Spatter(severity=1),
+            iaa.OneOf([
+                iaa.Add([-30, 30]),
+                iaa.Multiply((0.6, 1.4))
+                    ]),
+            iaa.OneOf([
+                iaa.OneOf([
+                    iaa.AdditiveGaussianNoise(scale=(0, 0.2 * 255), per_channel=True),
+                    iaa.SaltAndPepper((0.01, 0.2), per_channel=True)
+                    ]),
+                iaa.GaussianBlur(sigma=(0.01, 1.0)),
+                iaa.MotionBlur(k=(3, 5))
+                ]),
+            iaa.OneOf([
+                iaa.imgcorruptlike.DefocusBlur(severity=1),
+                iaa.imgcorruptlike.ZoomBlur(severity=1)
+                    ]),
+            iaa.imgcorruptlike.Saturate(severity=1)
             ])
     return augmenter
 
@@ -116,6 +123,9 @@ def createPatchesSet(data_set, patch_shape, stride_shape, augment=False,
     original_card = tf.data.experimental.cardinality(data_set)
     original_shape = (data_set.element_spec.shape[1], data_set.element_spec.shape[2])
 
+    if color_invert:
+        data_set = data_set.map(lambda x: 255.0 - x)
+
     data_set = data_set.map(
         lambda x: tf.reshape(
             tf.image.extract_patches(
@@ -139,12 +149,11 @@ def createPatchesSet(data_set, patch_shape, stride_shape, augment=False,
     if augment:
         in_type = data_set.element_spec.dtype
 
-        data_set.map(lambda x: tf.cast(x, tf.uint8))
         augmenter = augmentPatch()
 
         data_set = data_set.map(
             lambda x: tf.numpy_function(
-                func=augmenter.augment_images, inp=[x], Tout=tf.uint8
+                func=augmenter.augment_images, inp=[tf.cast(x, tf.uint8)], Tout=tf.uint8
                 )
         )
 
@@ -154,9 +163,6 @@ def createPatchesSet(data_set, patch_shape, stride_shape, augment=False,
         data_set = data_set.map(tf.image.grayscale_to_rgb)
 
     data_set = data_set.map(lambda x: x / 255)
-
-    if color_invert:
-        data_set = data_set.map(lambda x: 1 - x)
 
     return data_set
 
