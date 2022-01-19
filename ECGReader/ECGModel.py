@@ -8,6 +8,9 @@ from keras.preprocessing.image import ImageDataGenerator
 from matplotlib import pyplot as plt
 import imgaug
 from imgaug import augmenters as iaa
+from tensorflow.python.ops.numpy_ops import np_config
+
+np_config.enable_numpy_behavior()
 
 
 _string_mult = 100
@@ -68,8 +71,6 @@ def loadDataset(img_gen, img_shape, img_path, n_images, batch_size=1, seed=42, n
         tf.data.experimental.assert_cardinality(n_images)
         )
 
-    data_set = data_set.map(lambda x: tf.cast(x, tf.uint8))
-
     print('Spec:')
     print(data_set.element_spec)
 
@@ -87,10 +88,10 @@ def augmentPatch(patch):
             iaa.SaltAndPepper((0.01, 0.2), per_channel=True),
             iaa.GaussianBlur(sigma=(0.01, 1.0)),
             iaa.MotionBlur(k=(3, 5)),
-            iaa.imgcorruptlike.DefocusBlur(severity=1),
-            # iaa.imgcorruptlike.ZoomBlur(severity=1),
-            iaa.imgcorruptlike.Saturate(severity=1),
-            iaa.imgcorruptlike.Spatter(severity=1),
+            #iaa.imgcorruptlike.DefocusBlur(severity=1),  # iaa.imgcorruptlike works only on uint8 images, we have float32
+            #iaa.imgcorruptlike.ZoomBlur(severity=1),
+            #iaa.imgcorruptlike.Saturate(severity=1),
+            #iaa.imgcorruptlike.Spatter(severity=1),
             ])
     return augmenter(images=patch)
 
@@ -137,12 +138,17 @@ def createPatchesSet(data_set, patch_shape, stride_shape, augment=False,
         )
 
     if augment:
-        data_set = data_set.map(augmentPatch)
+        data_set = data_set.map(
+            lambda x : tf.numpy_function(
+                func=augmentPatch().augment_images, inp=[(x)], Tout=tf.float32
+                )
+        )
 
     if grayscale:
         data_set = data_set.map(tf.image.grayscale_to_rgb)
 
-    data_set = data_set.map(lambda x: tf.cast(x, tf.float32)).map(lambda x: x / 255)
+    data_set = data_set.map(lambda x: tf.cast(x, tf.float32))
+    data_set = data_set.map(lambda x: x / 255)
 
     if color_invert:
         data_set = data_set.map(lambda x: 1 - x)
@@ -219,10 +225,11 @@ if __name__ == '__main__':
     ecg_set = createPatchesSet(ecg_set, ecg_patch_shape, ecg_stride, augment=True)
     mask_set = createPatchesSet(mask_set, mask_patch_shape, mask_stride)
 
-    for image in ecg_set.take(10):
+    for ecg,mask in zip(ecg_set.take(3),mask_set.take(3)):
         i = 0
         while i < 19:
-            show(image[i, :, :, 0])
+            show(ecg[i, :, :, 0])
+            show(mask[i, :, :, 0])
             i += 1
 
     # We find the average number of nonzero pixels in the masks
