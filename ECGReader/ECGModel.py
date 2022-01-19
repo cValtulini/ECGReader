@@ -76,7 +76,7 @@ def loadDataset(img_gen, img_shape, img_path, n_images, batch_size=1, seed=42, n
     return data_set
 
 
-def augmentPatch(patch):
+def augmentPatch():
     augmenter = iaa.SomeOf((1, None), [
             iaa.Add([-30, 30]),
             iaa.AdditiveGaussianNoise(scale=(0, 0.2 * 255), per_channel=True),
@@ -89,7 +89,7 @@ def augmentPatch(patch):
             iaa.imgcorruptlike.Saturate(severity=1),
             iaa.imgcorruptlike.Spatter(severity=1),
             ])
-    return augmenter(images=patch)
+    return augmenter()
 
 
 def createPatchesSet(data_set, patch_shape, stride_shape, augment=False,
@@ -134,7 +134,9 @@ def createPatchesSet(data_set, patch_shape, stride_shape, augment=False,
         )
 
     if augment:
-        data_set = data_set.map(augmentPatch)
+        data_set = data_set.map(
+            lambda x : tf.numpy_function(func=augmentPatch().augment_images, inp=[(x)], Tout=tf.float32)
+        )
 
     if grayscale:
         data_set = data_set.map(tf.image.grayscale_to_rgb)
