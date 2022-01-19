@@ -77,17 +77,17 @@ def loadDataset(img_gen, img_shape, img_path, n_images, batch_size=1, seed=42, n
 
 
 def augmentPatch():
-    augmenter = iaa.SomeOf((1, None), [
+    augmenter = iaa.SomeOf((1, None),[
             iaa.Add([-30, 30]),
-            iaa.AdditiveGaussianNoise(scale=(0, 0.2 * 255), per_channel=True),
+            iaa.AdditiveGaussianNoise(scale=(0, 0.2), per_channel=True),
             iaa.Multiply((0.4, 1.6)),
-            iaa.SaltAndPepper((0.01, 0.2), per_channel=True),
+            #iaa.SaltAndPepper((0.01, 0.02), per_channel=True),
             iaa.GaussianBlur(sigma=(0.01, 1.0)),
             iaa.MotionBlur(k=(3, 5)),
-            iaa.imgcorruptlike.DefocusBlur(severity=1),
-            iaa.imgcorruptlike.ZoomBlur(severity=1),
-            iaa.imgcorruptlike.Saturate(severity=1),
-            iaa.imgcorruptlike.Spatter(severity=1),
+            #iaa.imgcorruptlike.DefocusBlur(severity=1),  #imgcorruptlike works only on uint8 images
+            #iaa.imgcorruptlike.ZoomBlur(severity=1),
+            #iaa.imgcorruptlike.Saturate(severity=1),
+            #iaa.imgcorruptlike.Spatter(severity=1),
             ])
     return augmenter()
 
