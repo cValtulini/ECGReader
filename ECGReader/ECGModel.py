@@ -164,9 +164,6 @@ def createPatchesSet(data_set, patch_shape, stride_shape, pad_horizontal=False,
 
     if augment:
         in_type = data_set.element_spec.dtype
-        in_batch_size = data_set.element_spec.shape[0]
-
-        data_set = data_set.unbatch()
 
         augmenter = createAugmenter()
         data_set = data_set.map(
@@ -174,8 +171,6 @@ def createPatchesSet(data_set, patch_shape, stride_shape, pad_horizontal=False,
                 func=augmenter.augment_images, inp=[tf.cast(x, tf.uint8)], Tout=tf.uint8
                 )
             )
-
-        data_set = data_set.batch(in_batch_size)
 
         data_set.map(lambda x: tf.cast(x, in_type))
 
@@ -273,11 +268,11 @@ if __name__ == '__main__':
     original_ecg_shape = (4410, 9082)
 
     # We define mask and ecg overall shape based on patches parameters
-    mask_patch_shape = (256, 128)
+    mask_patch_shape = (160, 160)
     ecg_patch_shape = (360, 200)
 
     mask_stride = (mask_patch_shape[0], mask_patch_shape[1] // 2)
-    ecg_stride = (ecg_patch_shape[0], ecg_patch_shape[1] // 2)
+    ecg_stride = (ecg_patch_shape[0] // 2, ecg_patch_shape[1] // 2)
 
     mask_shape = (mask_patch_shape[0] * ecg_rows,
                   mask_stride[1] * t_patch_lead * ecg_cols)
@@ -304,6 +299,15 @@ if __name__ == '__main__':
 
     print(ecg_set.element_spec)
     print(mask_set.element_spec)
+
+    for ecg, mask in zip(ecg_set.take(1), mask_set.take(1)):
+        i = 0
+        while i < 90:
+            if i == 0:
+                print(ecg.shape)
+            show(ecg[i, :, :, 0])
+            show(mask[i, :, :, 0])
+            i += 1
 
     # # Free up RAM in case the model definition cells were run multiple times
     # keras.backend.clear_session()
