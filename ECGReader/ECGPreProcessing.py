@@ -61,7 +61,7 @@ def plotXML(tracks, fullname, sim, destination_path):
                 major_ticks_x = np.arange(0, 2500, 100)
                 minor_ticks_x = np.arange(0, 2500, 20)
 
-            ax[j][i].plot(tracks[t], 'k', linewidth=1.2, )
+            ax[j][i].plot(tracks[t], 'k', linewidth=1.2)
             ax[j][i].set_xlim([0, 2500])
             ax[j][i].set_ylim([range_min, range_max])
             ax[j][i].set_xticks(major_ticks_x)
@@ -99,8 +99,8 @@ def plotXML(tracks, fullname, sim, destination_path):
 
 def masksPlotterXML(source_png_path, source_xml_path, destination_path):
     """
-    Plots multiple xml files from a source folder that must contain the seq or sim subfolder
-    for discriminating the plotting process.
+    Plots multiple xml files from a source folder that must contain the seq or sim
+    subfolder for discriminating the plotting process.
 
     Parameters
     ----------
@@ -140,7 +140,7 @@ def masksPlotterXML(source_png_path, source_xml_path, destination_path):
         if sim:
             for i in range(len(datas)):
                 tracks.append(np.array(datas[i]['data']))
-                tracks[i] = tracks[i][0:2460] - np.around(tracks[i][0:2460].mean(), 1)
+                tracks[i] = tracks[i][:2460] - np.around(tracks[i][:2460].mean(), 1)
 
         else:
             for i in range(len(datas)):

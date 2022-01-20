@@ -173,6 +173,8 @@ def createPatchesSet(data_set, patch_shape, stride_shape, pad_horizontal=False,
                 )
             )
 
+        # Shape is lost after applying imgaug's augmentations but it's still the same
+        # as the input's shape
         data_set = data_set.map(lambda x: tf.reshape(x, in_shape))
         data_set = data_set.map(lambda x: tf.cast(x, in_type))
 
@@ -184,7 +186,7 @@ def createPatchesSet(data_set, patch_shape, stride_shape, pad_horizontal=False,
     return data_set
 
 
-def getModel(img_size, num_classes):
+def getBaseModel(img_size, num_classes):
     inputs = keras.Input(shape=img_size + (3,))
 
     """
@@ -215,7 +217,7 @@ def getModel(img_size, num_classes):
         x = layers.MaxPooling2D(3, strides=2, padding="same")(x)
 
     """
-    [Second half of the network: upsampling inputs]
+    [Second half of the network: up-sampling inputs]
     """
 
     print(previous_block_activation)
@@ -299,27 +301,31 @@ if __name__ == '__main__':
                                pad_horizontal_size=ecg_pad, augment=True)
     mask_set = createPatchesSet(mask_set, mask_patch_shape, mask_stride)
 
+    mask_set = mask_set.map(lambda x: tf.math.greater(x, 1e-5))
+
     print(ecg_set.element_spec)
     print(mask_set.element_spec)
 
-    # for ecg, mask in zip(ecg_set.take(1), mask_set.take(1)):
-    #     i = 0
-    #     while i < 90:
-    #         if i == 0:
-    #             print(ecg.shape)
-    #         show(ecg[i, :, :, 0])
-    #         show(mask[i, :, :, 0])
-    #         i += 1
+    # Seems that we can pass x and y as a single dataset
+    train_set = tf.data.Dataset.zip((ecg_set, mask_set))
 
     # Free up RAM in case the model definition cells were run multiple times
     keras.backend.clear_session()
 
     # Build model
-    model = getModel(ecg_shape, num_classes=2)
-    model.summary()
-
-    # Load model
-
-    # Train model
-
-    # Evaluate model on test
+    basicUNet = getBaseModel(ecg_shape, num_classes=2)
+    basicUNet.summary()
+    #
+    # # TODO: Just copy pasted this
+    # # Configure the model for training.
+    # # We use the "sparse" version of categorical_crossentropy
+    # # because our target data is integers.
+    # basicUNet.compile(optimizer="rmsprop", loss="sparse_categorical_crossentropy")
+    #
+    # callbacks = [
+    #     keras.callbacks.ModelCheckpoint("oxford_segmentation.h5", save_best_only=True)
+    # ]
+    #
+    # # Train the model, doing validation at the end of each epoch.
+    # epochs = 15
+    # model.fit(train_gen, epochs=epochs, validation_data=val_gen, callbacks=callbacks)
