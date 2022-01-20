@@ -233,7 +233,6 @@ def getBaseModel(img_size, num_classes):
         x = layers.UpSampling2D(2)(x)
 
         # Project residual
-        residual = layers.UpSampling2D(2)(previous_block_activation[-(i + 1)])
         residual = previous_block_activation[-(i + 1)]
         x = layers.add([x, residual])  # Add back residual
         # previous_block_activation = x  # Set aside next residual
@@ -313,7 +312,7 @@ if __name__ == '__main__':
     keras.backend.clear_session()
 
     # Build model
-    basicUNet = getBaseModel(ecg_shape, num_classes=2)
+    basicUNet = getBaseModel(ecg_patch_shape, num_classes=2)
     basicUNet.summary()
     #
     # # TODO: Just copy pasted this
