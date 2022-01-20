@@ -3,7 +3,7 @@ from sys import argv
 import numpy as np
 import tensorflow as tf
 from tensorflow import keras
-from keras import models, layers
+from keras import layers
 from keras.preprocessing.image import ImageDataGenerator
 from matplotlib import pyplot as plt
 import imgaug
@@ -187,6 +187,66 @@ def createPatchesSet(data_set, patch_shape, stride_shape, pad_horizontal=False,
     return data_set
 
 
+def get_model(img_size, num_classes):
+    inputs = keras.Input(shape=img_size + (3,))
+
+    """
+    [First half of the network: down-sampling inputs]
+    """
+
+    # Entry block
+    x = layers.Conv2D(
+        32, 3,  # strides=2,
+        padding="same"
+        )(inputs)
+    x = layers.BatchNormalization()(x)
+    x = layers.Activation("relu")(x)
+    previous_block_activation = [x]
+    x = layers.MaxPooling2D(3, strides=2, padding="same")(x)
+
+    # Blocks 1, 2, 3 are identical apart from the feature depth.
+    for filters in [64, 128]:
+        x = layers.Activation("relu")(x)
+        x = layers.SeparableConv2D(filters, 3, padding="same")(x)
+        x = layers.BatchNormalization()(x)
+
+        x = layers.Activation("relu")(x)
+        x = layers.SeparableConv2D(filters, 3, padding="same")(x)
+        x = layers.BatchNormalization()(x)
+
+        previous_block_activation.append(x)  # Set aside next residual
+        x = layers.MaxPooling2D(3, strides=2, padding="same")(x)
+
+    """
+    [Second half of the network: upsampling inputs]
+    """
+
+    print(previous_block_activation)
+    for i, filters in enumerate([128, 64, 32]):
+        x = layers.Activation("relu")(x)
+        x = layers.Conv2DTranspose(filters, 3, padding="same")(x)
+        x = layers.BatchNormalization()(x)
+
+        x = layers.Activation("relu")(x)
+        x = layers.Conv2DTranspose(filters, 3, padding="same")(x)
+        x = layers.BatchNormalization()(x)
+
+        x = layers.UpSampling2D(2)(x)
+
+        # Project residual
+        residual = layers.UpSampling2D(2)(previous_block_activation[-(i + 1)])
+        residual = previous_block_activation[-(i + 1)]
+        x = layers.add([x, residual])  # Add back residual
+        # previous_block_activation = x  # Set aside next residual
+
+    # Add a per-pixel classification layer
+    outputs = layers.Conv2D(num_classes, 3, activation="softmax", padding="same")(x)
+
+    # Define the model
+    model = keras.Model(inputs, outputs)
+    return model
+
+
 if __name__ == '__main__':
     # Load images and masks as tf.data.Dataset loading from ImageDataGenerator
     _, path = argv
@@ -207,38 +267,26 @@ if __name__ == '__main__':
     ecg_cols = 2
 
     # Number of patches for each lead on the time axis (width)
-    t_patch_lead = 10
+    t_patch_lead = 8
 
     original_mask_shape = (3149, 6102)
     original_ecg_shape = (4410, 9082)
 
-    mask_subs_coeff = 4
-    ecg_subs_coeff = 5
-
     # We define mask and ecg overall shape based on patches parameters
-    # TODO: Find out a better way to compute and check parameters for patches and
-    #  stride always keep padding valid
-    mask_lead_shape = (original_mask_shape[0] // mask_subs_coeff // ecg_rows,
-                       original_mask_shape[1] // mask_subs_coeff // ecg_cols)
-    ecg_lead_shape = [original_ecg_shape[0] // ecg_subs_coeff // ecg_rows,
-                      original_ecg_shape[1] // ecg_subs_coeff // ecg_cols]
-    if ecg_lead_shape[0] % 2 != 0:
-        ecg_lead_shape[0] += 1
-    ecg_lead_shape = tuple(ecg_lead_shape)
+    mask_patch_shape = (256, 128)
+    ecg_patch_shape = (360, 200)
 
-    mask_stride = (mask_lead_shape[0], mask_lead_shape[1] // t_patch_lead)
-    ecg_stride = (ecg_lead_shape[0], ecg_lead_shape[1] // t_patch_lead)
+    mask_stride = (mask_patch_shape[0], mask_patch_shape[1] // 2)
+    ecg_stride = (ecg_patch_shape[0], ecg_patch_shape[1] // 2)
 
-    mask_patch_shape = (mask_lead_shape[0], mask_stride[1] * 2)
-    ecg_patch_shape = (ecg_lead_shape[0] * 2, ecg_stride[1] * 2)
-
-    mask_shape = (mask_lead_shape[0] * ecg_rows, mask_stride[1] * t_patch_lead * ecg_cols)
-    ecg_shape = (ecg_lead_shape[0] * ecg_rows, ecg_stride[1] * t_patch_lead * ecg_cols)
+    mask_shape = (mask_patch_shape[0] * ecg_rows,
+                  mask_stride[1] * t_patch_lead * ecg_cols)
+    ecg_shape = (ecg_stride[0] * ecg_rows, ecg_stride[1] * t_patch_lead * ecg_cols)
 
     print(f'mask patches: {mask_patch_shape}')
     print(f'ecg patches: {ecg_patch_shape}')
 
-    ecg_pad = ecg_lead_shape[0] // 2
+    ecg_pad = ecg_stride[0] // 2
 
     train_set_card = 48
     val_set_card = 15
@@ -257,66 +305,12 @@ if __name__ == '__main__':
     print(ecg_set.element_spec)
     print(mask_set.element_spec)
 
-    for ecg, mask in zip(ecg_set.take(1), mask_set.take(1)):
-        i = 0
-        while i < 19:
-            show(ecg[i, :, :, 0])
-            show(mask[i, :, :, 0])
-            i += 1
-
-    # We find the average number of nonzero pixels in the masks
-    # somma=0
-    # for ecg, mask in ecg_masks_set.take(mask_count):
-    #     somma+=np.count_nonzero(mask)
-    # average_nonzero_pixels=somma/mask_count
-
-    # Select patches that have a certain amount of signal in it,
-    # 351 was found as one third of the average of nonzero values in the masks dataset
-    # ecg_masks_set = ecg_masks_set.filter(
-    #     lambda x, y: tf.math.greater(tf.math.count_nonzero(y), 0)
-    #     )
-    # ecg_masks_set = ecg_masks_set.batch(batch_size=1)
-
-    # Check on the empty masks
-    # for ecg, mask in ecg_masks_set:
-    #     if np.count_nonzero(mask)==0:
-    #         print("Empty mask found")
-
-    # Unpack dataset to have back the masks and ecgs datasets filtered
-    # ecg_set_filtered = ecg_masks_set.map(lambda a, b: a)
-    # mask_set_filtered = ecg_masks_set.map(lambda a, b: b)
-
-    # Here we perform the dataset division in train and validation, by slicing it
-    # so that we have a 3/1 train/validation split.
-    # Meaning 3 records will go to training, then 1 record to validation, then repeat.
-    # The flat_map(lambda ds: ds) is because window() returns the results in batches,
-    # which we don't want. So we flatten it back out.
-    # split = 3
-    # ecg_train = ecg_set_filtered.window(split, split + 1).flat_map(lambda ds: ds)
-    # mask_train = mask_set_filtered.window(split, split + 1).flat_map(lambda ds: ds)
-    # ecg_validation = ecg_set_filtered.skip(split).window(1, split + 1).flat_map(
-    #     lambda ds: ds
-    #     )
-    # mask_validation = mask_set_filtered.skip(split).window(1, split + 1).flat_map(
-    #     lambda ds: ds
-    #     )
-
-    # I think it will be best to apply transformations after selection if we apply them
-    # through tf.data.Dataset.map(), I've seen there are a bunch of tf.image functions
-    # (it's better to use those for speed and memory reasons) for preprocessing but
-    # haven't looked up if/how to apply them randomly (with random parameters as
-    # ImageDataGenerator does) to patches/images
-
-    # Check some patches (visualize)
-
-    # Nothing to add from here on, just jotted down the comments to eventually expand,
-    # feel free to add modify and do every kind of thing on this code (or do anything
-    # else at all) and tell me if I have to merge some commit tomorrow.
-    # I was trying to do all this with info from the
-    # tf.keras.preprocessing.image.ImageDataGenerator page of the tensorflow API + the
-    # tf.data.Dataset page + the "Build Tensorflow input pipelines" guide that you can
-    # find linked in both the previous pages ( surely on the Dataset one) see the
-    # Preprocessing section of this one for the visualization part that I just started.
+    # # Free up RAM in case the model definition cells were run multiple times
+    # keras.backend.clear_session()
+    #
+    # # Build model
+    # model = get_model(img_size, num_classes)
+    # model.summary()
 
     # Load model
 
