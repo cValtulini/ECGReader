@@ -3,19 +3,17 @@ from sys import argv
 import numpy as np
 import tensorflow as tf
 from tensorflow import keras
-from keras import models, layers
+from keras import layers
 from keras.preprocessing.image import ImageDataGenerator
 from matplotlib import pyplot as plt
 import imgaug
 from imgaug import augmenters as iaa
-from tensorflow.python.ops.numpy_ops import np_config
-
-np_config.enable_numpy_behavior()
 
 
 _string_mult = 100
 
 imgaug.seed(42)
+
 
 def show(img):
     plt.figure()
@@ -53,9 +51,7 @@ def loadDataset(img_gen, img_shape, img_path, n_images, batch_size=1, seed=42, n
     print('-' * _string_mult)
     print(f'Loading dataset from {path}:')
 
-    spec = tf.TensorSpec(images.shape, dtype=tf.float32, name=name)
-
-    print(f'TensorSpec: {spec}')
+    spec = tf.TensorSpec(images.shape, dtype=images.dtype, name=name)
 
     # Creating the data set from the ImageDataGenerator object.
     data_set = tf.data.Dataset.from_generator(
@@ -79,24 +75,38 @@ def loadDataset(img_gen, img_shape, img_path, n_images, batch_size=1, seed=42, n
     return data_set
 
 
-def augmentPatch():
-    augmenter = iaa.SomeOf((1, None),[
-            iaa.Add([-30, 30]),
-            iaa.AdditiveGaussianNoise(scale=(0, 0.2), per_channel=True),
-            iaa.Multiply((0.4, 1.6)),
-            iaa.SaltAndPepper((0.01, 0.02), per_channel=True),
-            iaa.GaussianBlur(sigma=(0.01, 1.0)),
-            iaa.MotionBlur(k=(3, 5)),
-            #iaa.imgcorruptlike.DefocusBlur(severity=1),  # iaa.imgcorruptlike works only on uint8 images, we have float32
-            #iaa.imgcorruptlike.ZoomBlur(severity=1),
-            #iaa.imgcorruptlike.Saturate(severity=1),
-            #iaa.imgcorruptlike.Spatter(severity=1),
-            ])
+def createAugmenter():
+    augmenter = iaa.SomeOf(
+        (1, None), [
+                iaa.OneOf(
+                    [
+                            iaa.Add([-50, 50]),
+                            iaa.Multiply((0.6, 1.4))
+                            ]
+                    ),
+                iaa.OneOf(
+                    [
+                            iaa.OneOf(
+                                [
+                                        iaa.AdditiveGaussianNoise(
+                                            scale=(0, 0.2 * 255), per_channel=True
+                                            ),
+                                        iaa.SaltAndPepper((0.01, 0.2), per_channel=True)
+                                        ]
+                                ),
+                            iaa.GaussianBlur(sigma=(0.01, 1.0))
+                            ]
+                    ),
+                iaa.imgcorruptlike.DefocusBlur(severity=1),
+                iaa.imgcorruptlike.Saturate(severity=1)
+                ]
+        )
     return augmenter
 
 
-def createPatchesSet(data_set, patch_shape, stride_shape, augment=False,
-                     grayscale=True, color_invert=True):
+def createPatchesSet(data_set, patch_shape, stride_shape, pad_horizontal=False,
+                     pad_horizontal_size=None, augment=False, grayscale=True,
+                     color_invert=True):
     """
 
     Parameters
@@ -104,6 +114,8 @@ def createPatchesSet(data_set, patch_shape, stride_shape, augment=False,
     data_set
     patch_shape
     stride_shape
+    pad_horizontal
+    pad_horizontal_size
     augment
     grayscale
     color_invert
@@ -116,6 +128,20 @@ def createPatchesSet(data_set, patch_shape, stride_shape, augment=False,
     original_card = tf.data.experimental.cardinality(data_set)
     original_shape = (data_set.element_spec.shape[1], data_set.element_spec.shape[2])
 
+    if color_invert:
+        data_set = data_set.map(lambda x: 255.0 - x)
+
+    if pad_horizontal:
+        if isinstance(pad_horizontal_size, type(None)):
+            print('No pad size set. Padding not added.')
+        else:
+            data_set = data_set.map(
+                lambda x: tf.image.pad_to_bounding_box(
+                    x, pad_horizontal_size, 0, x.shape[1] + 2 * pad_horizontal_size,
+                    x.shape[2]
+                    )
+                )
+
     data_set = data_set.map(
         lambda x: tf.reshape(
             tf.image.extract_patches(
@@ -124,7 +150,7 @@ def createPatchesSet(data_set, patch_shape, stride_shape, augment=False,
                 rates=[1, 1, 1, 1],
                 padding='VALID'
                 ),
-            [-1, patch_shape[0], patch_shape[1], 1]
+            [-1, patch_shape[0], patch_shape[1], 3]
             )
         )
 
@@ -137,22 +163,83 @@ def createPatchesSet(data_set, patch_shape, stride_shape, augment=False,
         )
 
     if augment:
+        in_type = data_set.element_spec.dtype
+
+        augmenter = createAugmenter()
         data_set = data_set.map(
-            lambda x : tf.numpy_function(
-                func=augmentPatch().augment_images, inp=[(x)], Tout=tf.float32
+            lambda x: tf.numpy_function(
+                func=augmenter.augment_images, inp=[tf.cast(x, tf.uint8)], Tout=tf.uint8
                 )
-        )
+            )
+
+        data_set.map(lambda x: tf.cast(x, in_type))
 
     if grayscale:
-        data_set = data_set.map(tf.image.grayscale_to_rgb)
+        data_set = data_set.map(lambda x: tf.image.rgb_to_grayscale(x))
 
-    data_set = data_set.map(lambda x: tf.cast(x, tf.float32))
     data_set = data_set.map(lambda x: x / 255)
 
-    if color_invert:
-        data_set = data_set.map(lambda x: 1 - x)
-
     return data_set
+
+
+def get_model(img_size, num_classes):
+    inputs = keras.Input(shape=img_size + (3,))
+
+    """
+    [First half of the network: down-sampling inputs]
+    """
+
+    # Entry block
+    x = layers.Conv2D(
+        32, 3,  # strides=2,
+        padding="same"
+        )(inputs)
+    x = layers.BatchNormalization()(x)
+    x = layers.Activation("relu")(x)
+    previous_block_activation = [x]
+    x = layers.MaxPooling2D(3, strides=2, padding="same")(x)
+
+    # Blocks 1, 2, 3 are identical apart from the feature depth.
+    for filters in [64, 128]:
+        x = layers.Activation("relu")(x)
+        x = layers.SeparableConv2D(filters, 3, padding="same")(x)
+        x = layers.BatchNormalization()(x)
+
+        x = layers.Activation("relu")(x)
+        x = layers.SeparableConv2D(filters, 3, padding="same")(x)
+        x = layers.BatchNormalization()(x)
+
+        previous_block_activation.append(x)  # Set aside next residual
+        x = layers.MaxPooling2D(3, strides=2, padding="same")(x)
+
+    """
+    [Second half of the network: upsampling inputs]
+    """
+
+    print(previous_block_activation)
+    for i, filters in enumerate([128, 64, 32]):
+        x = layers.Activation("relu")(x)
+        x = layers.Conv2DTranspose(filters, 3, padding="same")(x)
+        x = layers.BatchNormalization()(x)
+
+        x = layers.Activation("relu")(x)
+        x = layers.Conv2DTranspose(filters, 3, padding="same")(x)
+        x = layers.BatchNormalization()(x)
+
+        x = layers.UpSampling2D(2)(x)
+
+        # Project residual
+        residual = layers.UpSampling2D(2)(previous_block_activation[-(i + 1)])
+        residual = previous_block_activation[-(i + 1)]
+        x = layers.add([x, residual])  # Add back residual
+        # previous_block_activation = x  # Set aside next residual
+
+    # Add a per-pixel classification layer
+    outputs = layers.Conv2D(num_classes, 3, activation="softmax", padding="same")(x)
+
+    # Define the model
+    model = keras.Model(inputs, outputs)
+    return model
 
 
 if __name__ == '__main__':
@@ -165,43 +252,36 @@ if __name__ == '__main__':
 
     ecg_train_path = os.path.join(ecg_path, 'train')
     ecg_val_path = os.path.join(ecg_path, 'val')
-    ecg_test_path = os.path.join(ecg_path, 'train')
+    ecg_test_path = os.path.join(ecg_path, 'test')
 
     mask_train_path = os.path.join(mask_path, 'train')
     mask_val_path = os.path.join(mask_path, 'val')
-    mask_test_path = os.path.join(mask_path, 'train')
+    mask_test_path = os.path.join(mask_path, 'test')
 
     ecg_rows = 6
     ecg_cols = 2
 
     # Number of patches for each lead on the time axis (width)
-    t_patch_lead = 10
+    t_patch_lead = 8
 
     original_mask_shape = (3149, 6102)
     original_ecg_shape = (4410, 9082)
 
-    mask_subs_coeff = 4
-    ecg_subs_coeff = 5
-
     # We define mask and ecg overall shape based on patches parameters
-    mask_lead_shape = (original_mask_shape[0] // mask_subs_coeff // ecg_rows,
-                       original_mask_shape[1] // mask_subs_coeff // ecg_cols)
-    ecg_lead_shape = (original_ecg_shape[0] // ecg_subs_coeff // ecg_rows,
-                      original_ecg_shape[1] // ecg_subs_coeff // ecg_cols)
+    mask_patch_shape = (160, 160)
+    ecg_patch_shape = (360, 200)
 
-    mask_stride = (mask_lead_shape[0], mask_lead_shape[1] // t_patch_lead)
-    ecg_stride = (ecg_lead_shape[0], ecg_lead_shape[1] // t_patch_lead)
+    mask_stride = (mask_patch_shape[0], mask_patch_shape[1] // 2)
+    ecg_stride = (ecg_patch_shape[0] // 2, ecg_patch_shape[1] // 2)
 
-    mask_patch_shape = (mask_lead_shape[0], mask_stride[1] * 2)
-    ecg_patch_shape = (ecg_lead_shape[0] * 2, ecg_stride[1] * 2)
-
-    mask_shape = (mask_lead_shape[0] * ecg_rows, mask_stride[1] * t_patch_lead * ecg_cols)
-    ecg_shape = (ecg_lead_shape[0] * ecg_rows, ecg_stride[1] * t_patch_lead * ecg_cols)
+    mask_shape = (mask_patch_shape[0] * ecg_rows,
+                  mask_stride[1] * t_patch_lead * ecg_cols)
+    ecg_shape = (ecg_stride[0] * ecg_rows, ecg_stride[1] * t_patch_lead * ecg_cols)
 
     print(f'mask patches: {mask_patch_shape}')
     print(f'ecg patches: {ecg_patch_shape}')
 
-    ecg_pad = ecg_lead_shape[0] // 2
+    ecg_pad = ecg_stride[0] // 2
 
     train_set_card = 48
     val_set_card = 15
@@ -213,77 +293,28 @@ if __name__ == '__main__':
     ecg_set = loadDataset(image_gen, ecg_shape, ecg_path, 77, name='ecg')
     mask_set = loadDataset(image_gen, mask_shape, mask_path, 77, name='mask')
 
-    # Pad ECG
-    ecg_set = ecg_set.map(
-        lambda x: tf.image.pad_to_bounding_box(
-            x, ecg_pad, 0,
-            x.shape[1] + 2 * ecg_pad, x.shape[2]
-            )
-        )
-
-    ecg_set = createPatchesSet(ecg_set, ecg_patch_shape, ecg_stride, augment=True)
+    ecg_set = createPatchesSet(ecg_set, ecg_patch_shape, ecg_stride, pad_horizontal=True,
+                               pad_horizontal_size=ecg_pad, augment=True)
     mask_set = createPatchesSet(mask_set, mask_patch_shape, mask_stride)
 
-    for ecg,mask in zip(ecg_set.take(3),mask_set.take(3)):
+    print(ecg_set.element_spec)
+    print(mask_set.element_spec)
+
+    for ecg, mask in zip(ecg_set.take(1), mask_set.take(1)):
         i = 0
-        while i < 19:
+        while i < 90:
+            if i == 0:
+                print(ecg.shape)
             show(ecg[i, :, :, 0])
             show(mask[i, :, :, 0])
             i += 1
 
-    # We find the average number of nonzero pixels in the masks
-    # somma=0
-    # for ecg, mask in ecg_masks_set.take(mask_count):
-    #     somma+=np.count_nonzero(mask)
-    # average_nonzero_pixels=somma/mask_count
-
-    # Select patches that have a certain amount of signal in it,
-    # 351 was found as one third of the average of nonzero values in the masks dataset
-    # ecg_masks_set = ecg_masks_set.filter(
-    #     lambda x, y: tf.math.greater(tf.math.count_nonzero(y), 0)
-    #     )
-    # ecg_masks_set = ecg_masks_set.batch(batch_size=1)
-
-    # Check on the empty masks
-    # for ecg, mask in ecg_masks_set:
-    #     if np.count_nonzero(mask)==0:
-    #         print("Empty mask found")
-
-    # Unpack dataset to have back the masks and ecgs datasets filtered
-    # ecg_set_filtered = ecg_masks_set.map(lambda a, b: a)
-    # mask_set_filtered = ecg_masks_set.map(lambda a, b: b)
-
-    # Here we perform the dataset division in train and validation, by slicing it
-    # so that we have a 3/1 train/validation split.
-    # Meaning 3 records will go to training, then 1 record to validation, then repeat.
-    # The flat_map(lambda ds: ds) is because window() returns the results in batches,
-    # which we don't want. So we flatten it back out.
-    # split = 3
-    # ecg_train = ecg_set_filtered.window(split, split + 1).flat_map(lambda ds: ds)
-    # mask_train = mask_set_filtered.window(split, split + 1).flat_map(lambda ds: ds)
-    # ecg_validation = ecg_set_filtered.skip(split).window(1, split + 1).flat_map(
-    #     lambda ds: ds
-    #     )
-    # mask_validation = mask_set_filtered.skip(split).window(1, split + 1).flat_map(
-    #     lambda ds: ds
-    #     )
-
-    # I think it will be best to apply transformations after selection if we apply them
-    # through tf.data.Dataset.map(), I've seen there are a bunch of tf.image functions
-    # (it's better to use those for speed and memory reasons) for preprocessing but
-    # haven't looked up if/how to apply them randomly (with random parameters as
-    # ImageDataGenerator does) to patches/images
-
-    # Check some patches (visualize)
-
-    # Nothing to add from here on, just jotted down the comments to eventually expand,
-    # feel free to add modify and do every kind of thing on this code (or do anything
-    # else at all) and tell me if I have to merge some commit tomorrow.
-    # I was trying to do all this with info from the
-    # tf.keras.preprocessing.image.ImageDataGenerator page of the tensorflow API + the
-    # tf.data.Dataset page + the "Build Tensorflow input pipelines" guide that you can
-    # find linked in both the previous pages ( surely on the Dataset one) see the
-    # Preprocessing section of this one for the visualization part that I just started.
+    # # Free up RAM in case the model definition cells were run multiple times
+    # keras.backend.clear_session()
+    #
+    # # Build model
+    # model = get_model(img_size, num_classes)
+    # model.summary()
 
     # Load model
 
