@@ -164,6 +164,7 @@ def createPatchesSet(data_set, patch_shape, stride_shape, pad_horizontal=False,
 
     if augment:
         in_type = data_set.element_spec.dtype
+        in_shape = data_set.element_spec.shape
 
         augmenter = createAugmenter()
         data_set = data_set.map(
@@ -172,7 +173,8 @@ def createPatchesSet(data_set, patch_shape, stride_shape, pad_horizontal=False,
                 )
             )
 
-        data_set.map(lambda x: tf.cast(x, in_type))
+        data_set = data_set.map(lambda x: tf.reshape(x, in_shape))
+        data_set = data_set.map(lambda x: tf.cast(x, in_type))
 
     if grayscale:
         data_set = data_set.map(lambda x: tf.image.rgb_to_grayscale(x))
@@ -182,7 +184,7 @@ def createPatchesSet(data_set, patch_shape, stride_shape, pad_horizontal=False,
     return data_set
 
 
-def get_model(img_size, num_classes):
+def getModel(img_size, num_classes):
     inputs = keras.Input(shape=img_size + (3,))
 
     """
@@ -300,21 +302,21 @@ if __name__ == '__main__':
     print(ecg_set.element_spec)
     print(mask_set.element_spec)
 
-    for ecg, mask in zip(ecg_set.take(1), mask_set.take(1)):
-        i = 0
-        while i < 90:
-            if i == 0:
-                print(ecg.shape)
-            show(ecg[i, :, :, 0])
-            show(mask[i, :, :, 0])
-            i += 1
+    # for ecg, mask in zip(ecg_set.take(1), mask_set.take(1)):
+    #     i = 0
+    #     while i < 90:
+    #         if i == 0:
+    #             print(ecg.shape)
+    #         show(ecg[i, :, :, 0])
+    #         show(mask[i, :, :, 0])
+    #         i += 1
 
-    # # Free up RAM in case the model definition cells were run multiple times
-    # keras.backend.clear_session()
-    #
-    # # Build model
-    # model = get_model(img_size, num_classes)
-    # model.summary()
+    # Free up RAM in case the model definition cells were run multiple times
+    keras.backend.clear_session()
+
+    # Build model
+    model = getModel(ecg_shape, num_classes=2)
+    model.summary()
 
     # Load model
 
