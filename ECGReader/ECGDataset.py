@@ -126,7 +126,7 @@ class ECGDataset(object):
                 patches_set = patches_set.map(
                     lambda x: tf.image.pad_to_bounding_box(
                         x, pad_horizontal_size, 0,
-                        x.shape[1] + 2 * pad_horizontal_size, x.shape[2]
+                        self.shape[0] + 2 * pad_horizontal_size, self.shape[1]
                         )
                     )
 
@@ -149,8 +149,8 @@ class ECGDataset(object):
         else:
             self.batch_size = batch_size
 
-        self.patches_set = self.patches_set.unbatch()
-        self.patches_set = self.patches_set.batch(self.batch_size)
+        patches_set = patches_set.unbatch()
+        patches_set = patches_set.batch(self.batch_size)
 
         self.n_patches = self.n_images * self.patches_per_image
 
