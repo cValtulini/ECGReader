@@ -112,7 +112,7 @@ if __name__ == '__main__':
 
     # We define mask and ecg overall shape based on patches parameters
     mask_patch_shape = (160, 160)
-    ecg_patch_shape = (320, 200)
+    ecg_patch_shape = (320, 160)
 
     mask_stride = (mask_patch_shape[0], mask_patch_shape[1] // 2)
     ecg_stride = (ecg_patch_shape[0] // 2, ecg_patch_shape[1] // 2)
@@ -140,11 +140,35 @@ if __name__ == '__main__':
         image_gen, mask_shape, mask_train_path, train_set_card, mask_patch_shape,
         mask_stride
         )
-    train_set = tf.data.Dataset.zip((train_ecg_set.patches_set,
-                                     train_mask_set.patches_set))
+    train_set = tf.data.Dataset.zip(
+        (train_ecg_set.patches_set, train_mask_set.patches_set)
+        )
 
-    print(train_ecg_set.patches_set.element_spec)
-    print(train_mask_set.patches_set.element_spec)
+    val_ecg_set = ECGDataset(
+        image_gen, ecg_shape, ecg_val_path, val_set_card, ecg_patch_shape,
+        ecg_stride, pad_horizontal=True, pad_horizontal_size=ecg_pad,
+        augment_patches=True, binarize_patches=False
+        )
+    val_mask_set = ECGDataset(
+        image_gen, mask_shape, mask_val_path, val_set_card, mask_patch_shape,
+        mask_stride
+        )
+    val_set = tf.data.Dataset.zip(
+        (val_ecg_set.patches_set, val_mask_set.patches_set)
+        )
+
+    test_ecg_set = ECGDataset(
+        image_gen, ecg_shape, ecg_test_path, test_set_card, ecg_patch_shape,
+        ecg_stride, pad_horizontal=True, pad_horizontal_size=ecg_pad,
+        augment_patches=True, binarize_patches=False
+        )
+    test_mask_set = ECGDataset(
+        image_gen, mask_shape, mask_test_path, test_set_card, mask_patch_shape,
+        mask_stride
+        )
+    test_set = tf.data.Dataset.zip(
+        (test_ecg_set.patches_set, test_mask_set.patches_set)
+        )
 
     # Seems that we can pass x and y as a single dataset
 
