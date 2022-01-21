@@ -55,7 +55,7 @@ class ECGDataset(object):
             self.batch_size = batch_size
 
         self.patches_set = self.patches_set.unbatch()
-        self.patches_set = self.patches_set.batch(batch_size)
+        self.patches_set = self.patches_set.batch(self.batch_size)
 
 
     def _setPatchesNumber(self):
