@@ -42,32 +42,11 @@ class ECGDataset(object):
 
         self.patch_shape = patch_shape
         self.stride_shape = stride_shape
-        self.patches_per_image = self._setPatchesNumber()
 
         self.patches_set = self._createPatchesSet(pad_horizontal, pad_horizontal_size,
-                                                  augment_patches, grayscale,
+                                                  augment_patches, grayscale, batch_size,
                                                   color_invert, one_hot_encode,
                                                   binarize_threshold)
-
-        if isinstance(batch_size, type(None)):
-            self.batch_size = self.patches_per_image // 2
-        else:
-            self.batch_size = batch_size
-
-        self.patches_set = self.patches_set.unbatch()
-        self.patches_set = self.patches_set.batch(self.batch_size)
-
-
-    def _setPatchesNumber(self):
-        """
-
-        Returns
-        -------
-
-        """
-        rows = ((self.shape[1] - self.patch_shape[1]) // self.stride_shape[1]) + 1
-        cols = ((self.shape[0] - self.patch_shape[0]) // self.stride_shape[0]) + 1
-        return rows * cols
 
 
     def _loadDataset(self, img_gen, path_to_img, seed):
@@ -117,7 +96,8 @@ class ECGDataset(object):
 
 
     def _createPatchesSet(self, pad_horizontal, pad_horizontal_size, augment_patches,
-                          grayscale, color_invert, one_hot_encode, binarize_threshold):
+                          grayscale, batch_size, color_invert, one_hot_encode,
+                          binarize_threshold):
         """
 
         Parameters
@@ -161,6 +141,16 @@ class ECGDataset(object):
                 [-1, self.patch_shape[0], self.patch_shape[1], 3]
                 )
             )
+
+        self.patches_per_image = patches_set.element_spec.shape[0]
+
+        if isinstance(batch_size, type(None)):
+            self.batch_size = self.patches_per_image // 2
+        else:
+            self.batch_size = batch_size
+
+        self.patches_set = self.patches_set.unbatch()
+        self.patches_set = self.patches_set.batch(self.batch_size)
 
         self.n_patches = self.n_images * self.patches_per_image
 
