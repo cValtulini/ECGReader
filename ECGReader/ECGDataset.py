@@ -101,7 +101,7 @@ class ECGDataset(object):
         data_set = tf.data.Dataset.from_generator(
             lambda: img_gen.flow_from_directory(
                 path_to_img, target_size=self.shape, class_mode=None, seed=seed,
-                batch_size=self.batch_size
+                batch_size=1
                 ),
             output_signature=spec
             )
