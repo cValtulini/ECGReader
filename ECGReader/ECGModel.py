@@ -7,12 +7,10 @@ from keras import layers
 from keras.preprocessing.image import ImageDataGenerator
 from matplotlib import pyplot as plt
 import imgaug
-from imgaug import augmenters as iaa
+from ECGDataset import ECGDataset
 
 
 _string_mult = 100
-
-imgaug.seed(42)
 
 
 def show(img):
@@ -20,180 +18,6 @@ def show(img):
     plt.imshow(img, cmap='gray')
     plt.axis('off')
     plt.show()
-
-class ECGSet(object):
-
-    def __init__(self):
-        pass
-
-    def loadDataset(self):
-        pass
-
-    def createPatchesSet(self):
-        pass
-
-def loadDataset(img_gen, img_shape, img_path, n_images, batch_size=1, seed=42, name=None):
-    """
-
-    Parameters
-    ----------
-    img_gen
-    img_shape
-    img_path
-    n_images
-    batch_size
-    seed
-    name
-
-    Returns
-    -------
-
-    """
-    # We need images.shape and images.dtype as parameters of
-    # `tf.data.Dataset.from_generator`
-    images = next(
-        img_gen.flow_from_directory(
-            img_path, target_size=img_shape, class_mode=None, seed=seed,
-            batch_size=batch_size
-            )
-        )
-
-    print('-' * _string_mult)
-    print(f'Loading dataset from {path}:')
-
-    spec = tf.TensorSpec(images.shape, dtype=images.dtype, name=name)
-
-    # Creating the data set from the ImageDataGenerator object.
-    data_set = tf.data.Dataset.from_generator(
-        lambda: img_gen.flow_from_directory(
-            img_path, target_size=img_shape, class_mode=None, seed=seed,
-            batch_size=batch_size
-            ),
-        output_signature=spec
-        )
-
-    data_set = data_set.apply(
-        tf.data.experimental.assert_cardinality(n_images)
-        )
-
-    print('Spec:')
-    print(data_set.element_spec)
-
-    print('Loaded.')
-    print('-' * _string_mult)
-
-    return data_set
-
-
-def createAugmenter():
-    augmenter = iaa.SomeOf(
-        (1, None), [
-                iaa.OneOf(
-                    [
-                            iaa.Add([-50, 50]),
-                            iaa.Multiply((0.6, 1.4))
-                            ]
-                    ),
-                iaa.OneOf(
-                    [
-                            iaa.OneOf(
-                                [
-                                        iaa.AdditiveGaussianNoise(
-                                            scale=(0, 0.2 * 255), per_channel=True
-                                            ),
-                                        iaa.SaltAndPepper((0.01, 0.2), per_channel=True)
-                                        ]
-                                ),
-                            iaa.GaussianBlur(sigma=(0.01, 1.0))
-                            ]
-                    ),
-                iaa.imgcorruptlike.DefocusBlur(severity=1),
-                iaa.imgcorruptlike.Saturate(severity=1)
-                ]
-        )
-    return augmenter
-
-
-def createPatchesSet(data_set, patch_shape, stride_shape, pad_horizontal=False,
-                     pad_horizontal_size=None, augment=False, grayscale=True,
-                     color_invert=True):
-    """
-
-    Parameters
-    ----------
-    data_set
-    patch_shape
-    stride_shape
-    pad_horizontal
-    pad_horizontal_size
-    augment
-    grayscale
-    color_invert
-
-    Returns
-    -------
-
-    """
-
-    original_card = tf.data.experimental.cardinality(data_set)
-    original_shape = (data_set.element_spec.shape[1], data_set.element_spec.shape[2])
-
-    if color_invert:
-        data_set = data_set.map(lambda x: 255.0 - x)
-
-    if pad_horizontal:
-        if isinstance(pad_horizontal_size, type(None)):
-            print('No pad size set. Padding not added.')
-        else:
-            data_set = data_set.map(
-                lambda x: tf.image.pad_to_bounding_box(
-                    x, pad_horizontal_size, 0, x.shape[1] + 2 * pad_horizontal_size,
-                    x.shape[2]
-                    )
-                )
-
-    data_set = data_set.map(
-        lambda x: tf.reshape(
-            tf.image.extract_patches(
-                x, sizes=[1, patch_shape[0], patch_shape[1], 1],
-                strides=[1, stride_shape[0], stride_shape[1], 1],
-                rates=[1, 1, 1, 1],
-                padding='VALID'
-                ),
-            [-1, patch_shape[0], patch_shape[1], 3]
-            )
-        )
-
-    n_patches_row = ((original_shape[1] - patch_shape[1]) // stride_shape[1]) + 1
-    n_patches_col = ((original_shape[0] - patch_shape[0]) // stride_shape[0]) + 1
-    n_patches = n_patches_row * n_patches_col
-
-    data_set = data_set.apply(
-        tf.data.experimental.assert_cardinality(original_card * n_patches)
-        )
-
-    if augment:
-        in_type = data_set.element_spec.dtype
-        in_shape = data_set.element_spec.shape
-
-        augmenter = createAugmenter()
-        data_set = data_set.map(
-            lambda x: tf.numpy_function(
-                func=augmenter.augment_images, inp=[tf.cast(x, tf.uint8)], Tout=tf.uint8
-                )
-            )
-
-        # Shape is lost after applying imgaug's augmentations but it's still the same
-        # as the input's shape
-        data_set = data_set.map(lambda x: tf.reshape(x, in_shape))
-        data_set = data_set.map(lambda x: tf.cast(x, in_type))
-
-    if grayscale:
-        data_set = data_set.map(lambda x: tf.image.rgb_to_grayscale(x))
-
-    data_set = data_set.map(lambda x: x / 255)
-
-    return data_set
 
 
 def getBaseModel(img_size, num_classes):
@@ -263,6 +87,8 @@ if __name__ == '__main__':
     # Load images and masks as tf.data.Dataset loading from ImageDataGenerator
     _, path = argv
 
+    imgaug.seed(42)
+
     ecg_path = os.path.join(path, 'png/matches/img')
 
     mask_path = os.path.join(path, 'png/matches/masks')
@@ -295,9 +121,6 @@ if __name__ == '__main__':
                   mask_stride[1] * t_patch_lead * ecg_cols)
     ecg_shape = (ecg_stride[0] * ecg_rows, ecg_stride[1] * t_patch_lead * ecg_cols)
 
-    print(f'mask patches: {mask_patch_shape}')
-    print(f'ecg patches: {ecg_patch_shape}')
-
     ecg_pad = ecg_stride[0] // 2
 
     train_set_card = 48
@@ -307,20 +130,23 @@ if __name__ == '__main__':
     # Creating a generator to load images for the Dataset
     image_gen = ImageDataGenerator()
 
-    ecg_set = loadDataset(image_gen, ecg_shape, ecg_path, 77)
-    mask_set = loadDataset(image_gen, mask_shape, mask_path, 77)
+    # Creating train val test sets
+    train_ecg_set = ECGDataset(
+        image_gen, ecg_shape, ecg_train_path, train_set_card, ecg_patch_shape,
+        ecg_stride, pad_horizontal=True, pad_horizontal_size=ecg_pad,
+        augment_patches=True, binarize_patches=False
+        )
+    train_mask_set = ECGDataset(
+        image_gen, mask_shape, mask_train_path, train_set_card, mask_patch_shape,
+        mask_stride
+        )
+    train_set = tf.data.Dataset.zip((train_ecg_set.patches_set,
+                                     train_mask_set.patches_set))
 
-    ecg_set = createPatchesSet(ecg_set, ecg_patch_shape, ecg_stride, pad_horizontal=True,
-                               pad_horizontal_size=ecg_pad, augment=True)
-    mask_set = createPatchesSet(mask_set, mask_patch_shape, mask_stride)
-
-    mask_set = mask_set.map(lambda x: tf.math.greater(x, 1e-5))
-
-    print(ecg_set.element_spec)
-    print(mask_set.element_spec)
+    print(train_ecg_set.patches_set.element_spec)
+    print(train_mask_set.patches_set.element_spec)
 
     # Seems that we can pass x and y as a single dataset
-    train_set = tf.data.Dataset.zip((ecg_set, mask_set))
 
     # Free up RAM in case the model definition cells were run multiple times
     keras.backend.clear_session()
