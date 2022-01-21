@@ -85,10 +85,6 @@ class ECGDataset(object):
             output_signature=spec
             )
 
-        data_set = data_set.apply(
-            tf.data.experimental.assert_cardinality(self.n_images)
-            )
-
         print('Loaded.')
         print('-' * _string_mult)
 
@@ -114,7 +110,7 @@ class ECGDataset(object):
         -------
 
         """
-        patches_set = self.data_set
+        patches_set = self.data_set.take(-1)
 
         if color_invert:
             patches_set = patches_set.map(lambda x: 255.0 - x)
@@ -144,19 +140,12 @@ class ECGDataset(object):
 
         self.patches_per_image = patches_set.element_spec.shape[0]
 
-        if isinstance(batch_size, type(None)):
-            self.batch_size = self.patches_per_image // 2
-        else:
+        if not isinstance(batch_size, type(None)):
             self.batch_size = batch_size
-
-        patches_set = patches_set.unbatch()
-        patches_set = patches_set.batch(self.batch_size)
+            patches_set = patches_set.unbatch()
+            patches_set = patches_set.batch(self.batch_size, drop_remainder=True)
 
         self.n_patches = self.n_images * self.patches_per_image
-
-        patches_set = patches_set.apply(
-            tf.data.experimental.assert_cardinality(self.n_patches)
-            )
 
         if augment_patches:
             in_type = patches_set.element_spec.dtype
