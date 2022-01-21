@@ -13,7 +13,7 @@ class ECGDataset(object):
     def __init__(self, img_gen, img_shape, path_to_img, n_images, patch_shape,
                  stride_shape, batch_size=None, seed=42, pad_horizontal=False,
                  pad_horizontal_size=None, augment_patches=False, grayscale=True,
-                 color_invert=True, binarize_patches=True, binarize_threshold=1e-5):
+                 color_invert=True, one_hot_encode=True, binarize_threshold=1e-5):
         """
 
         Parameters
@@ -31,7 +31,7 @@ class ECGDataset(object):
         augment_patches
         grayscale
         color_invert
-        binarize_patches
+        one_hot_encode
         binarize_threshold
         """
 
@@ -46,7 +46,7 @@ class ECGDataset(object):
 
         self.patches_set = self._createPatchesSet(pad_horizontal, pad_horizontal_size,
                                                   augment_patches, grayscale,
-                                                  color_invert, binarize_patches,
+                                                  color_invert, one_hot_encode,
                                                   binarize_threshold)
 
         if isinstance(batch_size, type(None)):
@@ -110,9 +110,6 @@ class ECGDataset(object):
             tf.data.experimental.assert_cardinality(self.n_images)
             )
 
-        print('Spec:')
-        print(data_set.element_spec)
-
         print('Loaded.')
         print('-' * _string_mult)
 
@@ -120,7 +117,7 @@ class ECGDataset(object):
 
 
     def _createPatchesSet(self, pad_horizontal, pad_horizontal_size, augment_patches,
-                          grayscale, color_invert, binarize_patches, binarize_threshold):
+                          grayscale, color_invert, one_hot_encode, binarize_threshold):
         """
 
         Parameters
@@ -130,7 +127,7 @@ class ECGDataset(object):
         augment_patches
         grayscale
         color_invert
-        binarize_patches
+        one_hot_encode
         binarize_threshold
 
         Returns
@@ -193,10 +190,11 @@ class ECGDataset(object):
 
         patches_set = patches_set.map(lambda x: x / 255)
 
-        if binarize_patches:
+        if one_hot_encode:
             patches_set = patches_set.map(
                 lambda x: tf.math.greater(x, binarize_threshold)
                 )
+            patches_set = patches_set.map(lambda x: tf.cast(x, dtype=tf.float32))
 
         return patches_set
 

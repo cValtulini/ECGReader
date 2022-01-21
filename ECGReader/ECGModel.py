@@ -76,7 +76,7 @@ def getBaseModel(img_shape):
         # previous_block_activation = x  # Set aside next residual
 
     # Add a per-pixel classification layer
-    outputs = layers.Conv2D(1, 3, activation="softmax", padding="same")(x)
+    outputs = layers.Conv2D(1, 3, activation="sigmoid", padding="same")(x)
 
     # Define the model
     model = keras.Model(inputs, outputs)
@@ -134,7 +134,7 @@ if __name__ == '__main__':
     train_ecg_set = ECGDataset(
         image_gen, ecg_shape, ecg_train_path, train_set_card, ecg_patch_shape,
         ecg_stride, pad_horizontal=True, pad_horizontal_size=ecg_pad,
-        augment_patches=True, binarize_patches=False
+        augment_patches=True, one_hot_encode=False
         )
     train_mask_set = ECGDataset(
         image_gen, mask_shape, mask_train_path, train_set_card, mask_patch_shape,
@@ -147,7 +147,7 @@ if __name__ == '__main__':
     val_ecg_set = ECGDataset(
         image_gen, ecg_shape, ecg_val_path, val_set_card, ecg_patch_shape,
         ecg_stride, pad_horizontal=True, pad_horizontal_size=ecg_pad,
-        augment_patches=True, binarize_patches=False
+        augment_patches=True, one_hot_encode=False
         )
     val_mask_set = ECGDataset(
         image_gen, mask_shape, mask_val_path, val_set_card, mask_patch_shape,
@@ -160,7 +160,7 @@ if __name__ == '__main__':
     test_ecg_set = ECGDataset(
         image_gen, ecg_shape, ecg_test_path, test_set_card, ecg_patch_shape,
         ecg_stride, pad_horizontal=True, pad_horizontal_size=ecg_pad,
-        augment_patches=True, binarize_patches=False
+        augment_patches=True, one_hot_encode=False
         )
     test_mask_set = ECGDataset(
         image_gen, mask_shape, mask_test_path, test_set_card, mask_patch_shape,
