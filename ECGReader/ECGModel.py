@@ -3,7 +3,7 @@ from sys import argv
 import numpy as np
 import tensorflow as tf
 from tensorflow import keras
-from keras import layers
+from keras import layers, metrics
 from keras.preprocessing.image import ImageDataGenerator
 from matplotlib import pyplot as plt
 import imgaug
@@ -182,7 +182,7 @@ if __name__ == '__main__':
     # Configure the model for training.
     basicUNet.compile(optimizer=keras.Optimizers.RMSprop(),
                       loss=tf.losses.BinaryCrossentropy(),
-                      metrics=None)
+                      metrics=[metrics.Precision(), metrics.Recall()])
 
     callbacks = [
         keras.callbacks.ModelCheckpoint('basic_unet.ckpt', save_best_only=True)
@@ -190,5 +190,5 @@ if __name__ == '__main__':
 
     # TODO: Just copy pasted this
     # Train the model, doing validation at the end of each epoch.
-    epochs = 15
-    model.fit(train_gen, epochs=epochs, validation_data=val_gen, callbacks=callbacks)
+    epochs = 1
+    basicUNet.fit(train_set, epochs=epochs, callbacks=callbacks, validation_data=val_set)
