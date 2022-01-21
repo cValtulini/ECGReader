@@ -180,7 +180,7 @@ if __name__ == '__main__':
     basicUNet.summary()
 
     # Configure the model for training.
-    basicUNet.compile(optimizer=keras.Optimizers.RMSprop(),
+    basicUNet.compile(optimizer=keras.optimizers.RMSprop(),
                       loss=tf.losses.BinaryCrossentropy(),
                       metrics=[metrics.Precision(), metrics.Recall()])
 
