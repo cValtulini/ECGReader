@@ -100,7 +100,7 @@ class ECGDataset(object):
         # Creating the data set from the ImageDataGenerator object.
         data_set = tf.data.Dataset.from_generator(
             lambda: img_gen.flow_from_directory(
-                path, target_size=self.shape, class_mode=None, seed=seed,
+                path_to_img, target_size=self.shape, class_mode=None, seed=seed,
                 batch_size=self.batch_size
                 ),
             output_signature=spec

@@ -178,17 +178,17 @@ if __name__ == '__main__':
     # Build model
     basicUNet = getBaseModel(ecg_patch_shape, num_classes=2)
     basicUNet.summary()
-    #
-    # # TODO: Just copy pasted this
-    # # Configure the model for training.
-    # # We use the "sparse" version of categorical_crossentropy
-    # # because our target data is integers.
-    # basicUNet.compile(optimizer="rmsprop", loss="sparse_categorical_crossentropy")
-    #
-    # callbacks = [
-    #     keras.callbacks.ModelCheckpoint("oxford_segmentation.h5", save_best_only=True)
-    # ]
-    #
-    # # Train the model, doing validation at the end of each epoch.
-    # epochs = 15
-    # model.fit(train_gen, epochs=epochs, validation_data=val_gen, callbacks=callbacks)
+
+    # Configure the model for training.
+    basicUNet.compile(optimizer=keras.Optimizers.RMSprop(),
+                      loss=tf.losses.BinaryCrossentropy(),
+                      metrics=None)
+
+    callbacks = [
+        keras.callbacks.ModelCheckpoint('basic_unet.ckpt', save_best_only=True)
+    ]
+
+    # TODO: Just copy pasted this
+    # Train the model, doing validation at the end of each epoch.
+    epochs = 15
+    model.fit(train_gen, epochs=epochs, validation_data=val_gen, callbacks=callbacks)
