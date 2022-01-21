@@ -2,14 +2,12 @@
 Creates mask etc.
 """
 import os
-import cv2
 import SPxml
 import numpy as np
-from tqdm import tqdm
 from matplotlib import pyplot as plt
+from imgaug import augmenters as iaa
 
 
-# Multiplies the '-' character that separates sections of outputs
 _string_mult = 100
 
 
@@ -153,3 +151,38 @@ def masksPlotterXML(source_png_path, source_xml_path, destination_path):
                         )
 
         plotXML(tracks, xml, sim, destination_path)
+
+
+def createAugmenter():
+    """
+
+    Returns
+    -------
+
+    """
+    augmenter = iaa.SomeOf(
+        (1, None), [
+                iaa.OneOf(
+                    [
+                            iaa.Add([-50, 50]),
+                            iaa.Multiply((0.6, 1.4))
+                            ]
+                    ),
+                iaa.OneOf(
+                    [
+                            iaa.OneOf(
+                                [
+                                        iaa.AdditiveGaussianNoise(
+                                            scale=(0, 0.2 * 255), per_channel=True
+                                            ),
+                                        iaa.SaltAndPepper((0.01, 0.2), per_channel=True)
+                                        ]
+                                ),
+                            iaa.GaussianBlur(sigma=(0.01, 1.0))
+                            ]
+                    ),
+                iaa.imgcorruptlike.DefocusBlur(severity=1),
+                iaa.imgcorruptlike.Saturate(severity=1)
+                ]
+        )
+    return augmenter
