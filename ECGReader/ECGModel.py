@@ -20,8 +20,8 @@ def show(img):
     plt.show()
 
 
-def getBaseModel(img_size, num_classes):
-    inputs = keras.Input(shape=img_size + (3,))
+def getBaseModel(img_shape):
+    inputs = keras.Input(shape=img_shape + (1,))
 
     """
     [First half of the network: down-sampling inputs]
@@ -76,7 +76,7 @@ def getBaseModel(img_size, num_classes):
         # previous_block_activation = x  # Set aside next residual
 
     # Add a per-pixel classification layer
-    outputs = layers.Conv2D(num_classes, 3, activation="softmax", padding="same")(x)
+    outputs = layers.Conv2D(1, 3, activation="softmax", padding="same")(x)
 
     # Define the model
     model = keras.Model(inputs, outputs)
@@ -176,8 +176,8 @@ if __name__ == '__main__':
     keras.backend.clear_session()
 
     # Build model
-    basicUNet = getBaseModel(ecg_patch_shape, num_classes=2)
-    basicUNet.summary()
+    basicUNet = getBaseModel(ecg_patch_shape)
+    # basicUNet.summary()
 
     # Configure the model for training.
     basicUNet.compile(optimizer=keras.optimizers.RMSprop(),
@@ -191,4 +191,5 @@ if __name__ == '__main__':
     # TODO: Just copy pasted this
     # Train the model, doing validation at the end of each epoch.
     epochs = 1
-    basicUNet.fit(train_set, epochs=epochs, callbacks=callbacks, validation_data=val_set)
+    basicUNet.fit(train_set, epochs=epochs, callbacks=callbacks,
+                  validation_data=val_set, verbose=2)
