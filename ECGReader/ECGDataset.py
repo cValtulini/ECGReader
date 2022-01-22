@@ -158,7 +158,7 @@ class ECGDataset(object):
                 )
 
         patches_set = patches_set.map(
-            lambda x: x / 255.0,
+            lambda x: tf.cast(x, dtype=tf.float32) / 255.0,
             num_parallel_calls=tf.data.AUTOTUNE
             )
 
