@@ -164,24 +164,24 @@ if __name__ == '__main__':
         (test_ecg_set.patches_set, test_mask_set.patches_set)
         )
 
-    # Free up RAM in case the model definition cells were run multiple times
-    keras.backend.clear_session()
+    # # Free up RAM in case the model definition cells were run multiple times
+    # keras.backend.clear_session()
 
-    # Build model
-    basicUNet = getBaseModel(ecg_patch_shape)
-    # basicUNet.summary()
+    # # Build model
+    # basicUNet = getBaseModel(ecg_patch_shape)
+    # # basicUNet.summary()
 
-    # Configure the model for training.
-    basicUNet.compile(optimizer=keras.optimizers.Adam(),
-                      loss=tf.losses.BinaryCrossentropy(),
-                      metrics=[metrics.Precision(), metrics.Recall()])
+    # # Configure the model for training.
+    # basicUNet.compile(optimizer=keras.optimizers.Adam(),
+    #                   loss=tf.losses.BinaryCrossentropy(),
+    #                   metrics=[metrics.Precision(), metrics.Recall()])
 
-    callbacks = [
-        keras.callbacks.ModelCheckpoint('basic_unet.ckpt', save_best_only=True)
-        ]
+    # callbacks = [
+    #     keras.callbacks.ModelCheckpoint('basic_unet.ckpt', save_best_only=True)
+    #     ]
 
-    # Train the model, doing validation at the end of each epoch.
-    epochs = 1
-    basicUNet.fit(train_set, epochs=epochs, callbacks=callbacks, shuffle=True,
-                  validation_data=val_set, steps_per_epoch=test_set_card,
-                  validation_steps=val_set_card)
+    # # Train the model, doing validation at the end of each epoch.
+    # epochs = 1
+    # basicUNet.fit(train_set, epochs=epochs, callbacks=callbacks, shuffle=True,
+    #               validation_data=val_set, steps_per_epoch=test_set_card,
+    #               validation_steps=val_set_card)
