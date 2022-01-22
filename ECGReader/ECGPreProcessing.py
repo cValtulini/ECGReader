@@ -176,9 +176,9 @@ def createAugmenter():
                             iaa.OneOf(
                                 [
                                         iaa.AdditiveGaussianNoise(
-                                            scale=(0, 0.2 * 255), per_channel=True
+                                            scale=(0, 0.2 * 255)
                                             ),
-                                        iaa.SaltAndPepper((0.01, 0.2), per_channel=True)
+                                        iaa.SaltAndPepper((0.01, 0.2))
                                         ]
                                 ),
                             iaa.GaussianBlur(sigma=(0.01, 1.0))
