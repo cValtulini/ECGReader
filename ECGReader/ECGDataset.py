@@ -72,8 +72,8 @@ class ECGDataset(object):
             batch_size=1, image_size=self.shape, shuffle=False, seed=seed,
             interpolation='nearest'
             )
-        data_set.unbatch()
-        data_set.batch(1, drop_remainder=True)
+        data_set = data_set.unbatch()
+        data_set = data_set.batch(1, drop_remainder=True)
 
         print('Loaded.')
         print('-' * _string_mult)
