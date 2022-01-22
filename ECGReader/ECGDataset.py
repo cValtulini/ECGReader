@@ -13,7 +13,7 @@ class ECGDataset(object):
     def __init__(self, img_shape, path_to_img, n_images, patch_shape,
                  stride_shape, batch_size=None, seed=42, pad_horizontal=False,
                  pad_horizontal_size=None, augment_patches=False, color_invert=True,
-                 one_hot_encode=True, binarize_threshold=1e-5):
+                 one_hot_encode=True, binarize_threshold=1e-6):
         """
 
         Parameters
@@ -69,9 +69,13 @@ class ECGDataset(object):
         # Creating the data set from the ImageDataGenerator object.
         data_set = tf.keras.utils.image_dataset_from_directory(
             path_to_img, labels=None, label_mode=None, color_mode='grayscale',
-            batch_size=1, image_size=self.shape, shuffle=False, seed=seed,
-            interpolation='nearest'
+            batch_size=1, image_size=self.shape, shuffle=False, seed=seed
             )
+        data_set = data_set.map(
+            lambda x: tf.cast(x, dtype=tf.uint8),
+            num_parallel_calls=tf.data.AUTOTUNE
+            )
+
         data_set = data_set.unbatch()
         data_set = data_set.batch(1, drop_remainder=True)
 
