@@ -1,5 +1,6 @@
 import os
 from sys import argv
+import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 from keras import layers, metrics, optimizers, losses
@@ -13,17 +14,126 @@ _string_mult = 100
 
 class ECGModel(object):
 
-    def __init__(self, train_set, test_set, val_set):
-        self.train_set = train_set
-        self.test_set = test_set
-        self.val_set = val_set
-        self.model = self._getModel()
+    def __init__(self, train_ecg_set, train_mask_set, test_ecg_set, test_mask_set,
+                 val_ecg_set, val_mask_set):
 
-    def _getModel(self):
-        pass
+        self.train_set = tf.data.Dataset.zip(train_ecg_set, train_mask_set)
+        self.test_set = tf.data.Dataset.zip(test_ecg_set, test_mask_set)
+        self.val_set = tf.data.Dataset.zip(val_ecg_set, val_mask_set)
 
-    def predictAndVisualize(self):
-        pass
+        self.callbacks = []
+
+        self.model = self._getModel(train_ecg_set.shape)
+
+        self.to_be_compiled = True
+
+
+    def _getModel(self, img_shape):
+        inputs = keras.Input(shape=img_shape + (1,))
+
+        """
+        [First half of the network: down-sampling inputs]
+        """
+
+        # Entry block
+        x = layers.Conv2D(
+            32, 3,  # strides=2,
+            padding="same"
+            )(inputs)
+        x = layers.BatchNormalization()(x)
+        x = layers.Activation("relu")(x)
+        previous_block_activation = [x]
+        x = layers.MaxPooling2D(3, strides=2, padding="same")(x)
+
+        # Blocks 1, 2, 3 are identical apart from the feature depth.
+        for filters in [64, 128]:
+            x = layers.Activation("relu")(x)
+            x = layers.SeparableConv2D(filters, 3, padding="same")(x)
+            x = layers.BatchNormalization()(x)
+
+            x = layers.Activation("relu")(x)
+            x = layers.SeparableConv2D(filters, 3, padding="same")(x)
+            x = layers.BatchNormalization()(x)
+
+            previous_block_activation.append(x)  # Set aside next residual
+            x = layers.MaxPooling2D(3, strides=2, padding="same")(x)
+
+        """
+        [Second half of the network: up-sampling inputs]
+        """
+
+        print(previous_block_activation)
+        for i, filters in enumerate([128, 64, 32]):
+            x = layers.Activation("relu")(x)
+            x = layers.Conv2DTranspose(filters, 3, padding="same")(x)
+            x = layers.BatchNormalization()(x)
+
+            x = layers.Activation("relu")(x)
+            x = layers.Conv2DTranspose(filters, 3, padding="same")(x)
+            x = layers.BatchNormalization()(x)
+            x = layers.UpSampling2D(2)(x)
+
+            # Project residual
+            # crop_shape = (
+            #     (previous_block_activation[-(i + 1)].shape[1] - x.shape[1]) // 2,
+            #     (previous_block_activation[-(i + 1)].shape[2] - x.shape[2]) // 2
+            #     )
+            # residual = layers.Cropping2D(crop_shape)(
+            #   previous_block_activation[-(i + 1)]
+            #   )
+
+            residual = previous_block_activation[-(i + 1)]
+            x = layers.add([x, residual])  # Add back residual
+            # previous_block_activation = x  # Set aside next residual
+
+        # Add a per-pixel classification layer
+        outputs = layers.Conv2D(1, 3, activation="sigmoid", padding="same")(x)
+
+        # Define the model
+        return keras.Model(inputs, outputs)
+
+
+    def fitModel(self, epochs=1, learning_rate=None):
+        if self.to_be_compiled:
+            keras.backend.clear_session()
+            self.model.compile(
+                optimizer=optimizers.Adam(learning_rate=1e-2),
+                loss=losses.BinaryCrossentropy(),
+                metrics=[metrics.Precision(), metrics.Recall()]
+                )
+            self.callbacks.append(
+                    keras.callbacks.ModelCheckpoint(
+                        'basic_unet.ckpt', save_best_only=True
+                        )
+                )
+            self.to_be_compiled = False
+
+        if not isinstance(learning_rate, type(None)):
+            tf.keras.backend.set_value(self.model.optimizer.learning_rate, learning_rate)
+
+        self.model.fit(
+            self.train_set, epochs=epochs, callbacks=self.callbacks, shuffle=True,
+            validation_data=self.val_set
+            )
+
+    def evaluateAndVisualize(self):
+        self.model.evaluate(self.test_set)
+
+        for (ecg, mask) in self.test_set:
+            predicted = self.model.predict(ecg)
+
+            fig, ax = plt.subplots(3, 5)
+            for i in range(5):
+                t = np.random.randint(0, ecg.numpy().shape[0])
+
+                ax[0, i].imshow(ecg[t, :, :, 0], cmap='gray')
+                ax[0, i].title(f'ECG PATCH {t}')
+
+                ax[1, i].imshow(predicted[t, :, :, 0], cmap='gray')
+                ax[0, i].title(f'PREDICTED PATCH {t}')
+
+                ax[2, i].imshow(mask[t, :, :, 0], cmap='gray')
+                ax[0, i].title(f'MASK PATCH {t}')
 
 
 def show(img, title=None):
@@ -33,68 +143,6 @@ def show(img, title=None):
         plt.title(title)
     plt.axis('off')
     plt.show()
-
-
-def getBaseModel(img_shape):
-    inputs = keras.Input(shape=img_shape + (1,))
-
-    """
-    [First half of the network: down-sampling inputs]
-    """
-
-    # Entry block
-    x = layers.Conv2D(
-        32, 3,  # strides=2,
-        padding="same"
-        )(inputs)
-    x = layers.BatchNormalization()(x)
-    x = layers.Activation("relu")(x)
-    previous_block_activation = [x]
-    x = layers.MaxPooling2D(3, strides=2, padding="same")(x)
-
-    # Blocks 1, 2, 3 are identical apart from the feature depth.
-    for filters in [64, 128]:
-        x = layers.Activation("relu")(x)
-        x = layers.SeparableConv2D(filters, 3, padding="same")(x)
-        x = layers.BatchNormalization()(x)
-
-        x = layers.Activation("relu")(x)
-        x = layers.SeparableConv2D(filters, 3, padding="same")(x)
-        x = layers.BatchNormalization()(x)
-
-        previous_block_activation.append(x)  # Set aside next residual
-        x = layers.MaxPooling2D(3, strides=2, padding="same")(x)
-
-    """
-    [Second half of the network: up-sampling inputs]
-    """
-
-    print(previous_block_activation)
-    for i, filters in enumerate([128, 64, 32]):
-        x = layers.Activation("relu")(x)
-        x = layers.Conv2DTranspose(filters, 3, padding="same")(x)
-        x = layers.BatchNormalization()(x)
-
-        x = layers.Activation("relu")(x)
-        x = layers.Conv2DTranspose(filters, 3, padding="same")(x)
-        x = layers.BatchNormalization()(x)
-        x = layers.UpSampling2D(2)(x)
-
-        # Project residual
-        # crop_shape = ((previous_block_activation[-(i + 1)].shape[1] - x.shape[1]) // 2,
-        #               (previous_block_activation[-(i + 1)].shape[2] - x.shape[2]) // 2)
-        # residual = layers.Cropping2D(crop_shape)(previous_block_activation[-(i + 1)])
-
-        residual = previous_block_activation[-(i + 1)]
-        x = layers.add([x, residual])  # Add back residual
-        # previous_block_activation = x  # Set aside next residual
-
-    # Add a per-pixel classification layer
-    outputs = layers.Conv2D(1, 3, activation="sigmoid", padding="same")(x)
-
-    # Define the model
-    model = keras.Model(inputs, outputs)
-    return model
 
 
 if __name__ == '__main__':
@@ -182,23 +230,14 @@ if __name__ == '__main__':
         )
 
     # Free up RAM in case the model definition cells were run multiple times
-    keras.backend.clear_session()
 
     # Build model
     basicUNet = getBaseModel(ecg_patch_shape)
     # basicUNet.summary()
 
     # Configure the model for training.
-    basicUNet.compile(optimizer=optimizers.Adam(learning_rate=1e-2),
-                      loss=losses.BinaryCrossentropy(),
-                      metrics=[metrics.Precision(), metrics.Recall()])
 
-    callbacks = [
-        keras.callbacks.ModelCheckpoint('basic_unet.ckpt', save_best_only=True)
-        ]
+
 
     # Train the model, doing validation at the end of each epoch.
-    epochs = 1
-    basicUNet.fit(train_set, epochs=epochs, callbacks=callbacks, shuffle=True,
-                  validation_data=val_set, steps_per_epoch=test_set_card,
-                  validation_steps=val_set_card)
+
