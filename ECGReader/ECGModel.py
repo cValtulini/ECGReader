@@ -188,8 +188,8 @@ if __name__ == '__main__':
         keras.callbacks.ModelCheckpoint('basic_unet.ckpt', save_best_only=True)
     ]
 
-    # TODO: Just copy pasted this
     # Train the model, doing validation at the end of each epoch.
     epochs = 1
-    basicUNet.fit(train_set, epochs=epochs, callbacks=callbacks,
-                  validation_data=val_set, verbose=2)
+    basicUNet.fit(train_set, epochs=epochs, callbacks=callbacks, shuffle=True,
+                  validation_data=val_set, steps_per_epoch=test_set_card,
+                  validation_steps=val_set_card)
