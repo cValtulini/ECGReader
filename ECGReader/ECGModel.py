@@ -181,7 +181,6 @@ if __name__ == '__main__':
         ]
 
     # Train the model, doing validation at the end of each epoch.
-    epochs = 1
+    epochs = 100
     basicUNet.fit(train_set, epochs=epochs, callbacks=callbacks, shuffle=True,
-                  validation_data=val_set, steps_per_epoch=test_set_card,
-                  validation_steps=val_set_card)
+                  validation_data=val_set)
