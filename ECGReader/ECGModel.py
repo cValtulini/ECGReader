@@ -2,7 +2,7 @@ import os
 from sys import argv
 import tensorflow as tf
 from tensorflow import keras
-from keras import layers, metrics
+from keras import layers, metrics, optimizers, losses
 from matplotlib import pyplot as plt
 import imgaug
 from ECGDataset import ECGDataset
@@ -11,9 +11,26 @@ from ECGDataset import ECGDataset
 _string_mult = 100
 
 
-def show(img):
+class ECGModel(object):
+
+    def __init__(self, train_set, test_set, val_set):
+        self.train_set = train_set
+        self.test_set = test_set
+        self.val_set = val_set
+        self.model = self._getModel()
+
+    def _getModel(self):
+        pass
+
+    def predictAndVisualize(self):
+        pass
+
+
+def show(img, title=None):
     plt.figure()
     plt.imshow(img, cmap='gray')
+    if not isinstance(title, type(None)):
+        plt.title(title)
     plt.axis('off')
     plt.show()
 
@@ -172,8 +189,8 @@ if __name__ == '__main__':
     # basicUNet.summary()
 
     # Configure the model for training.
-    basicUNet.compile(optimizer=keras.optimizers.Adam(),
-                      loss=tf.losses.BinaryCrossentropy(),
+    basicUNet.compile(optimizer=optimizers.Adam(learning_rate=1e-2),
+                      loss=losses.BinaryCrossentropy(),
                       metrics=[metrics.Precision(), metrics.Recall()])
 
     callbacks = [
