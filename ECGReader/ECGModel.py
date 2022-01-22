@@ -1,10 +1,8 @@
 import os
 from sys import argv
-import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 from keras import layers, metrics
-from keras.preprocessing.image import ImageDataGenerator
 from matplotlib import pyplot as plt
 import imgaug
 from ECGDataset import ECGDataset
@@ -181,7 +179,7 @@ if __name__ == '__main__':
 
     callbacks = [
         keras.callbacks.ModelCheckpoint('basic_unet.ckpt', save_best_only=True)
-    ]
+        ]
 
     # Train the model, doing validation at the end of each epoch.
     epochs = 1
