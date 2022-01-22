@@ -127,17 +127,14 @@ if __name__ == '__main__':
     val_set_card = 15
     test_set_card = 14
 
-    # Creating a generator to load images for the Dataset
-    image_gen = ImageDataGenerator()
-
     # Creating train val test sets
     train_ecg_set = ECGDataset(
-        image_gen, ecg_shape, ecg_train_path, train_set_card, ecg_patch_shape,
+        ecg_shape, ecg_train_path, train_set_card, ecg_patch_shape,
         ecg_stride, pad_horizontal=True, pad_horizontal_size=ecg_pad,
         augment_patches=True, one_hot_encode=False
         )
     train_mask_set = ECGDataset(
-        image_gen, mask_shape, mask_train_path, train_set_card, mask_patch_shape,
+        mask_shape, mask_train_path, train_set_card, mask_patch_shape,
         mask_stride
         )
     train_set = tf.data.Dataset.zip(
@@ -145,12 +142,12 @@ if __name__ == '__main__':
         )
 
     val_ecg_set = ECGDataset(
-        image_gen, ecg_shape, ecg_val_path, val_set_card, ecg_patch_shape,
+        ecg_shape, ecg_val_path, val_set_card, ecg_patch_shape,
         ecg_stride, pad_horizontal=True, pad_horizontal_size=ecg_pad,
         augment_patches=True, one_hot_encode=False
         )
     val_mask_set = ECGDataset(
-        image_gen, mask_shape, mask_val_path, val_set_card, mask_patch_shape,
+        mask_shape, mask_val_path, val_set_card, mask_patch_shape,
         mask_stride
         )
     val_set = tf.data.Dataset.zip(
@@ -158,19 +155,17 @@ if __name__ == '__main__':
         )
 
     test_ecg_set = ECGDataset(
-        image_gen, ecg_shape, ecg_test_path, test_set_card, ecg_patch_shape,
+        ecg_shape, ecg_test_path, test_set_card, ecg_patch_shape,
         ecg_stride, pad_horizontal=True, pad_horizontal_size=ecg_pad,
         augment_patches=True, one_hot_encode=False
         )
     test_mask_set = ECGDataset(
-        image_gen, mask_shape, mask_test_path, test_set_card, mask_patch_shape,
+        mask_shape, mask_test_path, test_set_card, mask_patch_shape,
         mask_stride
         )
     test_set = tf.data.Dataset.zip(
         (test_ecg_set.patches_set, test_mask_set.patches_set)
         )
-
-    # Seems that we can pass x and y as a single dataset
 
     # Free up RAM in case the model definition cells were run multiple times
     keras.backend.clear_session()
