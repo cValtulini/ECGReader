@@ -17,9 +17,9 @@ class ECGModel(object):
     def __init__(self, train_ecgs, train_masks, test_ecgs, test_masks,
                  val_ecgs, val_masks):
 
-        self.train_set = tf.data.Dataset.zip(train_ecgs, train_masks)
-        self.test_set = tf.data.Dataset.zip(test_ecgs, test_masks)
-        self.val_set = tf.data.Dataset.zip(val_ecgs, val_masks)
+        self.train_set = tf.data.Dataset.zip((train_ecgs, train_masks))
+        self.test_set = tf.data.Dataset.zip((test_ecgs, test_masks))
+        self.val_set = tf.data.Dataset.zip((val_ecgs, val_masks))
 
         self.callbacks = []
 
