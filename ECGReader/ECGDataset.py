@@ -10,15 +10,14 @@ _string_mult = 100
 
 class ECGDataset(object):
 
-    def __init__(self, img_gen, img_shape, path_to_img, n_images, patch_shape,
+    def __init__(self, img_shape, path_to_img, n_images, patch_shape,
                  stride_shape, batch_size=None, seed=42, pad_horizontal=False,
-                 pad_horizontal_size=None, augment_patches=False, grayscale=True,
-                 color_invert=True, binarize_patches=True, binarize_threshold=1e-5):
+                 pad_horizontal_size=None, augment_patches=False, color_invert=True,
+                 one_hot_encode=True, binarize_threshold=1e-6):
         """
 
         Parameters
         ----------
-        img_gen
         img_shape
         path_to_img
         n_images
@@ -29,48 +28,26 @@ class ECGDataset(object):
         pad_horizontal
         pad_horizontal_size
         augment_patches
-        grayscale
         color_invert
-        binarize_patches
+        one_hot_encode
         binarize_threshold
         """
 
         self.shape = img_shape
         self.n_images = n_images
 
-        self.data_set = self._loadDataset(img_gen, path_to_img, seed)
+        self.data_set = self._loadDataset(path_to_img, seed)
 
         self.patch_shape = patch_shape
         self.stride_shape = stride_shape
-        self.patches_per_image = self._setPatchesNumber()
 
         self.patches_set = self._createPatchesSet(pad_horizontal, pad_horizontal_size,
-                                                  augment_patches, grayscale,
-                                                  color_invert, binarize_patches,
+                                                  augment_patches, batch_size,
+                                                  color_invert, one_hot_encode,
                                                   binarize_threshold)
 
-        if isinstance(batch_size, type(None)):
-            self.batch_size = self.patches_per_image // 2
-        else:
-            self.batch_size = batch_size
 
-        self.patches_set = self.patches_set.unbatch()
-        self.patches_set = self.patches_set.batch(self.batch_size)
-
-
-    def _setPatchesNumber(self):
-        """
-
-        Returns
-        -------
-
-        """
-        rows = ((self.shape[1] - self.patch_shape[1]) // self.stride_shape[1]) + 1
-        cols = ((self.shape[0] - self.patch_shape[0]) // self.stride_shape[0]) + 1
-        return rows * cols
-
-
-    def _loadDataset(self, img_gen, path_to_img, seed):
+    def _loadDataset(self, path_to_img, seed):
         """
 
         Parameters
@@ -83,35 +60,24 @@ class ECGDataset(object):
         -------
 
         """
-        # We need images.shape and images.dtype as parameters of
-        # `tf.data.Dataset.from_generator`
-        images = next(
-            img_gen.flow_from_directory(
-                path_to_img, target_size=self.shape, class_mode=None, seed=seed,
-                batch_size=1
-                )
-            )
 
         print('-' * _string_mult)
         print(f'Loading dataset from {path_to_img}:')
 
-        spec = tf.TensorSpec(images.shape, dtype=images.dtype)
+        # spec = tf.TensorSpec(images.shape, dtype=images.dtype)
 
         # Creating the data set from the ImageDataGenerator object.
-        data_set = tf.data.Dataset.from_generator(
-            lambda: img_gen.flow_from_directory(
-                path_to_img, target_size=self.shape, class_mode=None, seed=seed,
-                batch_size=1
-                ),
-            output_signature=spec
+        data_set = tf.keras.utils.image_dataset_from_directory(
+            path_to_img, labels=None, label_mode=None, color_mode='grayscale',
+            batch_size=1, image_size=self.shape, shuffle=False, seed=seed
+            )
+        data_set = data_set.map(
+            lambda x: tf.cast(x, dtype=tf.uint8),
+            num_parallel_calls=tf.data.AUTOTUNE
             )
 
-        data_set = data_set.apply(
-            tf.data.experimental.assert_cardinality(self.n_images)
-            )
-
-        print('Spec:')
-        print(data_set.element_spec)
+        data_set = data_set.unbatch()
+        data_set = data_set.batch(1, drop_remainder=True)
 
         print('Loaded.')
         print('-' * _string_mult)
@@ -120,7 +86,7 @@ class ECGDataset(object):
 
 
     def _createPatchesSet(self, pad_horizontal, pad_horizontal_size, augment_patches,
-                          grayscale, color_invert, binarize_patches, binarize_threshold):
+                          batch_size, color_invert, one_hot_encode, binarize_threshold):
         """
 
         Parameters
@@ -128,19 +94,21 @@ class ECGDataset(object):
         pad_horizontal
         pad_horizontal_size
         augment_patches
-        grayscale
         color_invert
-        binarize_patches
+        one_hot_encode
         binarize_threshold
 
         Returns
         -------
 
         """
-        patches_set = self.data_set
+        patches_set = self.data_set.take(-1)
 
         if color_invert:
-            patches_set = patches_set.map(lambda x: 255.0 - x)
+            patches_set = patches_set.map(
+                lambda x: 255 - x,
+                num_parallel_calls=tf.data.AUTOTUNE
+            )
 
         if pad_horizontal:
             if isinstance(pad_horizontal_size, type(None)):
@@ -149,8 +117,9 @@ class ECGDataset(object):
                 patches_set = patches_set.map(
                     lambda x: tf.image.pad_to_bounding_box(
                         x, pad_horizontal_size, 0,
-                        x.shape[1] + 2 * pad_horizontal_size, x.shape[2]
-                        )
+                        self.shape[0] + 2 * pad_horizontal_size, self.shape[1]
+                        ),
+                    num_parallel_calls=tf.data.AUTOTUNE
                     )
 
         patches_set = patches_set.map(
@@ -161,41 +130,48 @@ class ECGDataset(object):
                     rates=[1, 1, 1, 1],
                     padding='VALID'
                     ),
-                [-1, self.patch_shape[0], self.patch_shape[1], 3]
-                )
+                [-1, self.patch_shape[0], self.patch_shape[1], 1]
+                ),
+            num_parallel_calls=tf.data.AUTOTUNE
             )
+
+        self.patches_per_image = patches_set.element_spec.shape[0]
+
+        if not isinstance(batch_size, type(None)):
+            self.batch_size = batch_size
+            patches_set = patches_set.unbatch()
+            patches_set = patches_set.batch(self.batch_size, drop_remainder=True)
 
         self.n_patches = self.n_images * self.patches_per_image
 
-        patches_set = patches_set.apply(
-            tf.data.experimental.assert_cardinality(self.n_patches)
-            )
-
         if augment_patches:
-            in_type = patches_set.element_spec.dtype
             in_shape = patches_set.element_spec.shape
 
             augmenter = createAugmenter()
             patches_set = patches_set.map(
                 lambda x: tf.numpy_function(
-                    func=augmenter.augment_images, inp=[tf.cast(x, tf.uint8)],
-                    Tout=tf.uint8
-                    )
+                    func=augmenter.augment_images, inp=[x], Tout=tf.uint8
+                    ),
+                num_parallel_calls=tf.data.AUTOTUNE
                 )
 
-            # Shape is lost after applying imgaug's augmentations but it's still the same
-            # as the input's shape
-            patches_set = patches_set.map(lambda x: tf.reshape(x, in_shape))
-            patches_set = patches_set.map(lambda x: tf.cast(x, in_type))
-
-        if grayscale:
-            patches_set = patches_set.map(lambda x: tf.image.rgb_to_grayscale(x))
-
-        patches_set = patches_set.map(lambda x: x / 255)
-
-        if binarize_patches:
+            # Shape is lost after applying numpy_function
             patches_set = patches_set.map(
-                lambda x: tf.math.greater(x, binarize_threshold)
+                lambda x: tf.reshape(x, in_shape),
+                num_parallel_calls=tf.data.AUTOTUNE
+                )
+
+        patches_set = patches_set.map(
+            lambda x: tf.cast(x, dtype=tf.float32) / 255.0,
+            num_parallel_calls=tf.data.AUTOTUNE
+            )
+
+        if one_hot_encode:
+            patches_set = patches_set.map(
+                lambda x: tf.cast(
+                    tf.math.greater(x, binarize_threshold), dtype=tf.float32
+                    ),
+                num_parallel_calls=tf.data.AUTOTUNE
                 )
 
         return patches_set
