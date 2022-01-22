@@ -14,12 +14,12 @@ _string_mult = 100
 
 class ECGModel(object):
 
-    def __init__(self, train_ecg_set, train_mask_set, test_ecg_set, test_mask_set,
-                 val_ecg_set, val_mask_set):
+    def __init__(self, train_ecgs, train_masks, test_ecgs, test_masks,
+                 val_ecgs, val_masks):
 
-        self.train_set = tf.data.Dataset.zip(train_ecg_set, train_mask_set)
-        self.test_set = tf.data.Dataset.zip(test_ecg_set, test_mask_set)
-        self.val_set = tf.data.Dataset.zip(val_ecg_set, val_mask_set)
+        self.train_set = tf.data.Dataset.zip(train_ecgs, train_masks)
+        self.test_set = tf.data.Dataset.zip(test_ecgs, test_masks)
+        self.val_set = tf.data.Dataset.zip(val_ecgs, val_masks)
 
         self.callbacks = []
 
@@ -93,11 +93,11 @@ class ECGModel(object):
         return keras.Model(inputs, outputs)
 
 
-    def fitModel(self, epochs=1, learning_rate=None):
+    def fitModel(self, epochs=1, learning_rate=1e-2):
         if self.to_be_compiled:
             keras.backend.clear_session()
             self.model.compile(
-                optimizer=optimizers.Adam(learning_rate=1e-2),
+                optimizer=optimizers.Adam(learning_rate=learning_rate),
                 loss=losses.BinaryCrossentropy(),
                 metrics=[metrics.Precision(), metrics.Recall()]
                 )
@@ -108,32 +108,44 @@ class ECGModel(object):
                 )
             self.to_be_compiled = False
 
-        if not isinstance(learning_rate, type(None)):
-            tf.keras.backend.set_value(self.model.optimizer.learning_rate, learning_rate)
+        tf.keras.backend.set_value(self.model.optimizer.learning_rate, learning_rate)
 
         self.model.fit(
             self.train_set, epochs=epochs, callbacks=self.callbacks, shuffle=True,
             validation_data=self.val_set
             )
 
-    def evaluateAndVisualize(self):
+    def evaluateAndVisualize(self, visualize=True, save=False, save_path=None):
         self.model.evaluate(self.test_set)
 
-        for (ecg, mask) in self.test_set:
-            predicted = self.model.predict(ecg)
+        if visualize:
+            figure_number = 0
+            for (ecg, mask) in self.test_set:
+                predicted = self.model.predict(ecg)
 
-            fig, ax = plt.subplots(3, 5)
-            for i in range(5):
-                t = np.random.randint(0, ecg.numpy().shape[0])
+                fig, ax = plt.subplots(3, 5)
+                for i in range(5):
+                    t = np.random.randint(0, ecg.numpy().shape[0])
 
-                ax[0, i].imshow(ecg[t, :, :, 0], cmap='gray')
-                ax[0, i].title(f'ECG PATCH {t}')
+                    ax[0, i].imshow(ecg[t, :, :, 0], cmap='gray')
+                    ax[0, i].title(f'ECG PATCH {t}')
+                    ax[0, i].set_axis('off')
 
-                ax[1, i].imshow(predicted[t, :, :, 0], cmap='gray')
-                ax[0, i].title(f'PREDICTED PATCH {t}')
+                    ax[1, i].imshow(predicted[t, :, :, 0], cmap='gray')
+                    ax[1, i].title(f'PREDICTED PATCH {t}')
+                    ax[1, i].set_axis('off')
 
-                ax[2, i].imshow(mask[t, :, :, 0], cmap='gray')
-                ax[0, i].title(f'MASK PATCH {t}')
+                    ax[2, i].imshow(mask[t, :, :, 0], cmap='gray')
+                    ax[2, i].title(f'MASK PATCH {t}')
+                    ax[2, i].set_axis('off')
+
+                if save:
+                    plt.savefig(save_path+f'figure_number_{figure_number}')
+                    figure_number += 1
+
+
+    def plotModelHistory(self):
+        pass
 
 
 def show(img, title=None):
@@ -169,8 +181,8 @@ if __name__ == '__main__':
     # Number of patches for each lead on the time axis (width)
     t_patch_lead = 8
 
-    original_mask_shape = (3149, 6102)
-    original_ecg_shape = (4410, 9082)
+    # original_mask_shape = (3149, 6102)
+    # original_ecg_shape = (4410, 9082)
 
     # We define mask and ecg overall shape based on patches parameters
     mask_patch_shape = (200, 120)
@@ -199,9 +211,6 @@ if __name__ == '__main__':
         mask_shape, mask_train_path, train_set_card, mask_patch_shape,
         mask_stride
         )
-    train_set = tf.data.Dataset.zip(
-        (train_ecg_set.patches_set, train_mask_set.patches_set)
-        )
 
     val_ecg_set = ECGDataset(
         ecg_shape, ecg_val_path, val_set_card, ecg_patch_shape,
@@ -211,9 +220,6 @@ if __name__ == '__main__':
     val_mask_set = ECGDataset(
         mask_shape, mask_val_path, val_set_card, mask_patch_shape,
         mask_stride
-        )
-    val_set = tf.data.Dataset.zip(
-        (val_ecg_set.patches_set, val_mask_set.patches_set)
         )
 
     test_ecg_set = ECGDataset(
@@ -225,19 +231,13 @@ if __name__ == '__main__':
         mask_shape, mask_test_path, test_set_card, mask_patch_shape,
         mask_stride
         )
-    test_set = tf.data.Dataset.zip(
-        (test_ecg_set.patches_set, test_mask_set.patches_set)
-        )
 
-    # Free up RAM in case the model definition cells were run multiple times
+    basicUNet = ECGModel(train_ecg_set, train_mask_set,
+                         test_ecg_set, test_mask_set,
+                         val_ecg_set, val_mask_set
+                        )
 
-    # Build model
-    basicUNet = getBaseModel(ecg_patch_shape)
-    # basicUNet.summary()
+    basicUNet.fitModel(epochs=1, learning_rate=1e-2)
 
-    # Configure the model for training.
-
-
-
-    # Train the model, doing validation at the end of each epoch.
+    basicUNet.evaluateAndVisualize()
 
