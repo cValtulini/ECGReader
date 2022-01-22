@@ -11,11 +11,11 @@ from ECGDataset import ECGDataset
 
 _string_mult = 100
 
-
+# TODO: implement model loading
 class ECGModel(object):
 
     def __init__(self, train_ecgs, train_masks, test_ecgs, test_masks,
-                 val_ecgs, val_masks):
+                 val_ecgs, val_masks, from_saved=False, saved_model_path=None):
 
         self.patch_shape = train_ecgs.patch_shape
 
@@ -25,12 +25,15 @@ class ECGModel(object):
 
         self.callbacks = []
 
-        self.model = self._getModel()
+        if from_saved:
+            self.model = keras.models.load_model(saved_model_path)
+        else:
+            self.model = self._getModel()
 
         self.to_be_compiled = True
 
 
-    def _getModel(self, img_shape):
+    def _getModel(self):
         inputs = keras.Input(shape=self.patch_shape + (1,))
 
         """
