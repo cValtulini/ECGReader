@@ -102,14 +102,14 @@ if __name__ == '__main__':
     ecg_cols = 2
 
     # Number of patches for each lead on the time axis (width)
-    t_patch_lead = 8
+    t_patch_lead = 6
 
     original_mask_shape = (3149, 6102)
     original_ecg_shape = (4410, 9082)
 
     # We define mask and ecg overall shape based on patches parameters
-    mask_patch_shape = (160, 160)
-    ecg_patch_shape = (160, 160)
+    mask_patch_shape = (240, 200)
+    ecg_patch_shape = (240, 200)
 
     mask_stride = (mask_patch_shape[0], mask_patch_shape[1] // 2)
     ecg_stride = (ecg_patch_shape[0] // 2, ecg_patch_shape[1] // 2)
