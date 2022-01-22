@@ -61,15 +61,14 @@ def getBaseModel(img_shape):
         x = layers.Activation("relu")(x)
         x = layers.Conv2DTranspose(filters, 3, padding="same")(x)
         x = layers.BatchNormalization()(x)
-        if i == 0:
-            x = layers.UpSampling2D((1, 2))(x)
-        else:
-            x = layers.UpSampling2D(2)(x)
+        x = layers.UpSampling2D(2)(x)
 
         # Project residual
-        crop_shape = ((previous_block_activation[-(i + 1)].shape[1] - x.shape[1]) // 2,
-                      (previous_block_activation[-(i + 1)].shape[2] - x.shape[2]) // 2)
-        residual = layers.Cropping2D(crop_shape)(previous_block_activation[-(i + 1)])
+        # crop_shape = ((previous_block_activation[-(i + 1)].shape[1] - x.shape[1]) // 2,
+        #               (previous_block_activation[-(i + 1)].shape[2] - x.shape[2]) // 2)
+        # residual = layers.Cropping2D(crop_shape)(previous_block_activation[-(i + 1)])
+
+        residual = previous_block_activation[-(i + 1)]
         x = layers.add([x, residual])  # Add back residual
         # previous_block_activation = x  # Set aside next residual
 
@@ -110,7 +109,7 @@ if __name__ == '__main__':
 
     # We define mask and ecg overall shape based on patches parameters
     mask_patch_shape = (160, 160)
-    ecg_patch_shape = (320, 160)
+    ecg_patch_shape = (160, 160)
 
     mask_stride = (mask_patch_shape[0], mask_patch_shape[1] // 2)
     ecg_stride = (ecg_patch_shape[0] // 2, ecg_patch_shape[1] // 2)
