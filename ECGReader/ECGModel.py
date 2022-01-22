@@ -17,19 +17,21 @@ class ECGModel(object):
     def __init__(self, train_ecgs, train_masks, test_ecgs, test_masks,
                  val_ecgs, val_masks):
 
+        self.patch_shape = train_ecgs.patch_shape
+
         self.train_set = tf.data.Dataset.zip((train_ecgs, train_masks))
         self.test_set = tf.data.Dataset.zip((test_ecgs, test_masks))
         self.val_set = tf.data.Dataset.zip((val_ecgs, val_masks))
 
         self.callbacks = []
 
-        self.model = self._getModel(train_ecg_set.shape)
+        self.model = self._getModel()
 
         self.to_be_compiled = True
 
 
     def _getModel(self, img_shape):
-        inputs = keras.Input(shape=img_shape + (1,))
+        inputs = keras.Input(shape=self.patch_shape + (1,))
 
         """
         [First half of the network: down-sampling inputs]
