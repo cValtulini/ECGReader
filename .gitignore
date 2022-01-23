@@ -3,3 +3,4 @@ basic_unet.ckpt/
 .idea
 *.ipynb
 .vscode
+basic_unet.ckpt/
