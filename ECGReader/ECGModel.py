@@ -127,10 +127,14 @@ class ECGModel(object):
 
         self.model.fit(
             self.train_set, epochs=epochs, callbacks=self.callbacks, shuffle=True,
-            validation_data=self.val_set
+            validation_data=self.val_set, class_weight={0: 0.25, 1: 0.75}
             )
 
     def evaluateAndVisualize(self, visualize=True, save=False, save_path=None):
+        if self.to_be_compiled:
+            print("Model hasn't been compiled yet")
+            return
+
         self.model.evaluate(self.test_set)
 
         if visualize:
