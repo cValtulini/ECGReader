@@ -144,6 +144,7 @@ class ECGModel(object):
                 predicted = self.model.predict(ecg)
 
                 fig, ax = plt.subplots(3, 5, figsize=(50 / 2.54, 25 / 2.54))
+                plt.subplots_adjust(wspace=0.05, hspace=0.05)
                 for i in range(5):
                     t = np.random.randint(0, ecg.numpy().shape[0])
 
