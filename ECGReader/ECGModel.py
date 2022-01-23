@@ -144,15 +144,15 @@ class ECGModel(object):
 
                     ax[0, i].imshow(ecg[t, :, :, 0], cmap='gray')
                     ax[0, i].title.set_text(f'ECG PATCH {t}')
-                    ax[0, i].set_axis('off')
+                    ax[0, i].axis('off')
 
                     ax[1, i].imshow(predicted[t, :, :, 0], cmap='gray')
                     ax[1, i].title.set_text(f'PREDICTED PATCH {t}')
-                    ax[1, i].set_axis('off')
+                    ax[1, i].axis('off')
 
                     ax[2, i].imshow(mask[t, :, :, 0], cmap='gray')
                     ax[2, i].title.set_text(f'MASK PATCH {t}')
-                    ax[2, i].set_axis('off')
+                    ax[2, i].axis('off')
 
                 plt.show()
 
