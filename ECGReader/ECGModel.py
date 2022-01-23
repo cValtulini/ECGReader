@@ -11,7 +11,7 @@ from ECGDataset import ECGDataset
 
 _string_mult = 100
 
-# TODO: implement model loading
+
 class ECGModel(object):
 
     def __init__(self, train_ecgs, train_masks, test_ecgs, test_masks,
@@ -143,16 +143,18 @@ class ECGModel(object):
                     t = np.random.randint(0, ecg.numpy().shape[0])
 
                     ax[0, i].imshow(ecg[t, :, :, 0], cmap='gray')
-                    ax[0, i].title(f'ECG PATCH {t}')
+                    ax[0, i].title.set_text(f'ECG PATCH {t}')
                     ax[0, i].set_axis('off')
 
                     ax[1, i].imshow(predicted[t, :, :, 0], cmap='gray')
-                    ax[1, i].title(f'PREDICTED PATCH {t}')
+                    ax[1, i].title.set_text(f'PREDICTED PATCH {t}')
                     ax[1, i].set_axis('off')
 
                     ax[2, i].imshow(mask[t, :, :, 0], cmap='gray')
-                    ax[2, i].title(f'MASK PATCH {t}')
+                    ax[2, i].title.set_text(f'MASK PATCH {t}')
                     ax[2, i].set_axis('off')
+
+                plt.show()
 
                 if save:
                     plt.savefig(save_path+f'figure_number_{figure_number}')
