@@ -114,7 +114,7 @@ class ECGModel(object):
             keras.backend.clear_session()
             self.model.compile(
                 optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate),
-                loss=tfa.losses.SigmoidFocalCrossEntropy(),
+                loss=losses.BinaryCrossentropy(),
                 metrics=[metrics.Precision(), metrics.Recall()]
                 )
             self.callbacks.append(
