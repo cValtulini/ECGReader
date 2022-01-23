@@ -2,6 +2,7 @@ import os
 from sys import argv
 import numpy as np
 import tensorflow as tf
+import tensorflow_addons as tfa
 from tensorflow import keras
 from keras import layers, metrics, losses
 from matplotlib import pyplot as plt
@@ -113,8 +114,7 @@ class ECGModel(object):
             keras.backend.clear_session()
             self.model.compile(
                 optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate),
-                loss=losses.BinaryCrossentropy(),
-                loss_weights=[0.75, 0.25],
+                loss=tfa.losses.SigmoidFocalCrossEntropy(),
                 metrics=[metrics.Precision(), metrics.Recall()]
                 )
             self.callbacks.append(
