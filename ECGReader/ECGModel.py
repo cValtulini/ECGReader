@@ -114,6 +114,7 @@ class ECGModel(object):
             self.model.compile(
                 optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate),
                 loss=losses.BinaryCrossentropy(),
+                loss_weight = [0.25, 0.75],
                 metrics=[metrics.Precision(), metrics.Recall()]
                 )
             self.callbacks.append(
@@ -127,7 +128,7 @@ class ECGModel(object):
 
         self.model.fit(
             self.train_set, epochs=epochs, callbacks=self.callbacks, shuffle=True,
-            validation_data=self.val_set, class_weight={0: 0.25, 1: 0.75}
+            validation_data=self.val_set
             )
 
     def evaluateAndVisualize(self, visualize=True, save=False, save_path=None):
