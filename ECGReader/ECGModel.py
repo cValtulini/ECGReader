@@ -1,12 +1,14 @@
 import os
 from sys import argv
 import numpy as np
+import pandas as pd
 import tensorflow as tf
 from tensorflow import keras
 from keras import layers, metrics, losses
 import segmentation_models
 from matplotlib import pyplot as plt
 import imgaug
+from tqdm import tqdm
 from ECGDataset import ECGDataset
 
 
@@ -41,7 +43,10 @@ class ECGModel(object):
         else:
             self.model = self._getModel()
 
+        self.weights = self._computeWeights(train_masks.patches_set)
+
         self.to_be_compiled = True
+        self.model_history = []
 
 
     def _getModel(self):
@@ -109,13 +114,27 @@ class ECGModel(object):
         return keras.Model(inputs, outputs)
 
 
-    def fitModel(self, epochs=1, learning_rate=1e-3):
+    def _computeWeights(self, patches):
+        print('-' * _string_mult)
+        print('Computing weigths')
+
+        mask_pixel_mean = 0
+        mask_count = 0
+        for patch in tqdm(patches.take(-1)):
+            mask_pixel_mean += np.sum(patch.numpy()) / patch.numpy().size
+            mask_count += 1
+
+        print(1 - (mask_pixel_mean / mask_count))
+        print('-' * _string_mult)
+        return 1 - (mask_pixel_mean / mask_count)
+
+
+    def fitModel(self, epochs=1, learning_rate=1e-3, validation_frequency=1):
         if self.to_be_compiled:
             keras.backend.clear_session()
             self.model.compile(
                 optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate),
-                loss=segmentation_models.losses.DiceLoss(class_weights=[0.75]),
-                #loss=losses.BinaryCrossentropy(),
+                loss=segmentation_models.losses.DiceLoss(class_weights=[self.weights]),
                 metrics=[metrics.Precision(), metrics.Recall()]
                 )
             self.callbacks.append(
@@ -127,10 +146,13 @@ class ECGModel(object):
 
         tf.keras.backend.set_value(self.model.optimizer.learning_rate, learning_rate)
 
-        self.model.fit(
+        history = self.model.fit(
             self.train_set, epochs=epochs, callbacks=self.callbacks, shuffle=True,
-            validation_data=self.val_set
+            validation_data=self.val_set, validation_freq=validation_frequency
             )
+
+        self.model_history.append(history)
+
 
     def evaluateAndVisualize(self, visualize=True, save=False, save_path=None):
         if self.to_be_compiled:
@@ -141,24 +163,24 @@ class ECGModel(object):
 
         if visualize:
             figure_number = 0
-            for (ecg, mask) in self.test_set:
+            for ecg_number, (ecg, mask) in enumerate(self.test_set):
                 predicted = self.model.predict(ecg)
 
-                fig, ax = plt.subplots(3, 5, figsize=(50 / 2.54, 25 / 2.54))
-                plt.subplots_adjust(wspace=0.05, hspace=0.05)
+                fig, ax = plt.subplots(3, 5, figsize=(70 / 2.54, 35 / 2.54))
+                plt.subplots_adjust(wspace=0.05, hspace=0.3)
                 for i in range(5):
                     t = np.random.randint(0, ecg.numpy().shape[0])
 
                     ax[0, i].imshow(ecg[t, :, :, 0], cmap='gray')
-                    ax[0, i].title.set_text(f'ECG PATCH {t}')
+                    ax[0, i].title.set_text(f'ECG {ecg_number} PATCH {t}')
                     ax[0, i].axis('off')
 
                     ax[1, i].imshow(predicted[t, :, :, 0], cmap='gray')
-                    ax[1, i].title.set_text(f'PREDICTED PATCH {t}')
+                    ax[1, i].title.set_text(f'PREDICTED {ecg_number} PATCH {t}')
                     ax[1, i].axis('off')
 
                     ax[2, i].imshow(mask[t, :, :, 0], cmap='gray')
-                    ax[2, i].title.set_text(f'MASK PATCH {t}')
+                    ax[2, i].title.set_text(f'MASK {ecg_number} PATCH {t}')
                     ax[2, i].axis('off')
 
                 plt.show()
@@ -168,8 +190,52 @@ class ECGModel(object):
                     figure_number += 1
 
 
-    def plotModelHistory(self):
-        pass
+    def visualizePatch(self, ecg_number, patch_number):
+        if self.to_be_compiled:
+            print("Model hasn't been compiled yet")
+            return
+
+        for index, (ecg, mask) in enumerate(self.test_set.take(ecg_number)):
+            if index == ecg_number:
+                predicted = self.model.predict(ecg)
+
+                fig, ax = plt.subplots(1, 3, figsize=(70 / 2.54, 35 / 2.54))
+                plt.subplots_adjust(wspace=0.05, hspace=0.3)
+
+                ax[0, 0].imshow(ecg[patch_number, :, :, 0], cmap='gray')
+                ax[0, 0].title.set_text(f'ECG {ecg_number} PATCH {patch_number}')
+                ax[0, 0].axis('off')
+
+                ax[0, 1].imshow(predicted[patch_number, :, :, 0], cmap='gray')
+                ax[0, 1].title.set_text(f'PREDICTED {ecg_number} PATCH {patch_number}')
+                ax[0, 1].axis('off')
+
+                ax[0, 2].imshow(mask[patch_number, :, :, 0], cmap='gray')
+                ax[0, 2].title.set_text(f'MASK {ecg_number} PATCH {patch_number}')
+                ax[0, 2].axis('off')
+
+                plt.show()
+
+
+    def visualizeHistory(self, fit_instance_index=-1, save=False):
+        if len(self.model_history) == 0:
+            print("Model hasn't been trained yet")
+
+        hist = self.model_history[fit_instance_index]
+
+        df = pd.DataFrame(
+            hist.history, index=hist.epoch
+            )  # create a pandas dataframe
+        plt.figure(figsize=(8, 6))
+        df.plot(ylim=(0, max(1, df.values.max())))  # plot all the metrics
+
+        loss = hist.history['loss'][-1]
+        acc = hist.history['precision'][-1]
+        rec = hist.history['recall'][-1]
+        plt.title('Loss: %.3f, Accuracy: %.3f, Recall: %.3f%', (loss, acc, rec))
+
+        if save:
+            plt.savefig('history.png')
 
 
 def show(img, title=None):
@@ -260,8 +326,4 @@ if __name__ == '__main__':
                          test_ecg_set, test_mask_set,
                          val_ecg_set, val_mask_set
                         )
-
-    basicUNet.fitModel(epochs=1, learning_rate=1e-3)
-
-    basicUNet.evaluateAndVisualize()
 
