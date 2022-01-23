@@ -109,7 +109,7 @@ class ECGModel(object):
         return keras.Model(inputs, outputs)
 
 
-    def fitModel(self, epochs=1, learning_rate=1e-2):
+    def fitModel(self, epochs=1, learning_rate=1e-3):
         if self.to_be_compiled:
             keras.backend.clear_session()
             self.model.compile(
@@ -259,7 +259,7 @@ if __name__ == '__main__':
                          val_ecg_set, val_mask_set
                         )
 
-    basicUNet.fitModel(epochs=1, learning_rate=1e-2)
+    basicUNet.fitModel(epochs=1, learning_rate=1e-3)
 
     basicUNet.evaluateAndVisualize()
 
