@@ -19,9 +19,19 @@ class ECGModel(object):
 
         self.patch_shape = train_ecgs.patch_shape
 
-        self.train_set = tf.data.Dataset.zip((train_ecgs, train_masks))
-        self.test_set = tf.data.Dataset.zip((test_ecgs, test_masks))
-        self.val_set = tf.data.Dataset.zip((val_ecgs, val_masks))
+        self.ecg_sets = {train_ecgs: "train", test_ecgs: "test", val_ecgs: "validation"}
+        self.mask_sets = {train_masks: "train", test_masks: "test", val_masks:
+            "validation"}
+
+        self.train_set = tf.data.Dataset.zip(
+            (train_ecgs.patches_set, train_masks.patches_set)
+            )
+        self.test_set = tf.data.Dataset.zip(
+            (test_ecgs.patches_set, test_masks.patches_set)
+            )
+        self.val_set = tf.data.Dataset.zip(
+            (val_ecgs.patches_set, val_masks.patches_set)
+            )
 
         self.callbacks = []
 
