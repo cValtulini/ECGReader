@@ -45,8 +45,9 @@ class ECGModel(object):
 
         self.weights = self._computeWeights(train_masks.patches_set)
 
-        self.to_be_compiled = True
-        self.model_history = []
+        self._compileModel()
+
+        self.history = None
 
 
     def _getModel(self):
@@ -121,20 +122,21 @@ class ECGModel(object):
         return 1 - (mask_pixel_mean / mask_count)
 
 
+    def _compileModel(self):
+        keras.backend.clear_session()
+        self.model.compile(
+            optimizer=tf.keras.optimizers.Adam(),
+            loss=segmentation_models.losses.DiceLoss(class_weights=[self.weights]),
+            metrics=[metrics.Precision(), metrics.Recall()]
+            )
+        self.callbacks.append(
+                keras.callbacks.ModelCheckpoint(
+                    'unet_model', save_best_only=True
+                    )
+            )
+
+
     def fitModel(self, epochs=1, learning_rate=1e-3, validation_frequency=1):
-        if self.to_be_compiled:
-            keras.backend.clear_session()
-            self.model.compile(
-                optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate),
-                loss=segmentation_models.losses.DiceLoss(class_weights=[self.weights]),
-                metrics=[metrics.Precision(), metrics.Recall()]
-                )
-            self.callbacks.append(
-                    keras.callbacks.ModelCheckpoint(
-                        'basic_unet.ckpt', save_best_only=True
-                        )
-                )
-            self.to_be_compiled = False
 
         tf.keras.backend.set_value(self.model.optimizer.learning_rate, learning_rate)
 
@@ -147,9 +149,6 @@ class ECGModel(object):
 
 
     def evaluateAndVisualize(self, visualize=True, save=False, save_path=None):
-        if self.to_be_compiled:
-            print("Model hasn't been compiled yet")
-            return
 
         self.model.evaluate(self.test_set)
 
@@ -183,9 +182,6 @@ class ECGModel(object):
 
 
     def visualizePatch(self, ecg_number, patch_number):
-        if self.to_be_compiled:
-            print("Model hasn't been compiled yet")
-            return
 
         for index, (ecg, mask) in enumerate(self.test_set.take(ecg_number + 1)):
             if index == ecg_number:
@@ -194,36 +190,32 @@ class ECGModel(object):
                 fig, ax = plt.subplots(1, 3, figsize=(30 / 2.54, 30 / 2.54))
                 plt.subplots_adjust(wspace=0.05, hspace=0.15)
 
-                ax[0, 0].imshow(ecg[patch_number, :, :, 0], cmap='gray')
-                ax[0, 0].title.set_text(f'ECG {ecg_number} PATCH {patch_number}')
-                ax[0, 0].axis('off')
+                ax[0].imshow(ecg[patch_number, :, :, 0], cmap='gray')
+                ax[0].title.set_text(f'ECG {ecg_number} PATCH {patch_number}')
+                ax[0].axis('off')
 
-                ax[0, 1].imshow(predicted[patch_number, :, :, 0], cmap='gray')
-                ax[0, 1].title.set_text(f'PREDICTED {ecg_number} PATCH {patch_number}')
-                ax[0, 1].axis('off')
+                ax[1].imshow(predicted[patch_number, :, :, 0], cmap='gray')
+                ax[1].title.set_text(f'PREDICTED {ecg_number} PATCH {patch_number}')
+                ax[1].axis('off')
 
-                ax[0, 2].imshow(mask[patch_number, :, :, 0], cmap='gray')
-                ax[0, 2].title.set_text(f'MASK {ecg_number} PATCH {patch_number}')
-                ax[0, 2].axis('off')
+                ax[2].imshow(mask[patch_number, :, :, 0], cmap='gray')
+                ax[2].title.set_text(f'MASK {ecg_number} PATCH {patch_number}')
+                ax[2].axis('off')
 
                 plt.show()
 
 
     def visualizeHistory(self, fit_instance_index=-1, save=False):
-        if len(self.model_history) == 0:
-            print("Model hasn't been trained yet")
 
-        hist = self.model_history[fit_instance_index]
-
-        loss = hist.history['loss'][-1]
-        acc = hist.history['precision'][-1]
-        rec = hist.history['recall'][-1]
+        loss = self.history.history['loss'][-1]
+        acc = self.history.history['precision'][-1]
+        rec = self.history.history['recall'][-1]
         print(f'Loss: {loss}')
         print(f'Accuracy: {acc}')
         print(f'Recall: {rec}')
 
         df = pd.DataFrame(
-            hist.history, index=hist.epoch
+            self.history.history, index=self.history.epoch
             )  # create a pandas dataframe
         plt.figure(figsize=(8, 6))
         df.plot(ylim=(0, max(1, df.values.max())))  # plot all the metrics
@@ -269,8 +261,8 @@ if __name__ == '__main__':
     # original_ecg_shape = (4410, 9082)
 
     # We define mask and ecg overall shape based on patches parameters
-    mask_patch_shape = (200, 120)
-    ecg_patch_shape = (200, 120)
+    mask_patch_shape = (220, 120)
+    ecg_patch_shape = (220, 120)
 
     mask_stride = (mask_patch_shape[0], mask_patch_shape[1] // 2)
     ecg_stride = (ecg_patch_shape[0] // 2, ecg_patch_shape[1] // 2)
