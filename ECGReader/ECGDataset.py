@@ -13,24 +13,59 @@ class ECGDataset(object):
     def __init__(self, img_shape, path_to_img, n_images, patch_shape,
                  stride_shape, batch_size=None, seed=42, pad_horizontal=False,
                  pad_horizontal_size=None, augment_patches=False, color_invert=True,
-                 one_hot_encode=True, binarize_threshold=1e-6):
+                 binarize=True, binarize_threshold=1e-6):
         """
+        Initializes an ECGDataset object. Loads a tf.data.Dataset object into the
+        `data_set` attribute and then divides it into patches in `patches_set`.
 
         Parameters
         ----------
-        img_shape
-        path_to_img
-        n_images
-        patch_shape
-        stride_shape
-        batch_size
-        seed
-        pad_horizontal
-        pad_horizontal_size
-        augment_patches
-        color_invert
-        one_hot_encode
-        binarize_threshold
+        img_shape : Tuple[int]
+            The shape of one image in the dataset.
+
+        path_to_img : String
+            Path to the images folder.
+
+        n_images : int
+            Total number of images in the folder.
+
+        patch_shape : Tuple[int]
+            Shape of patches into which images are divided.
+
+        stride_shape : Tuple[int]
+            Strides into the height and width directions when dividing images into
+            patches.
+
+        batch_size : int = None
+            Size of a batch of `patches_set` if None a batch will be formed by the number
+            of patches obtained by an image.
+
+        seed : int = 42
+            The seed for operation involving randomness applied on the datasets (
+            loading and augmentation).
+
+        pad_horizontal : Bool = False
+            Flag to indicate if the images are to be padded in height before creating
+            patches.
+
+        pad_horizontal_size : int = None
+            The amount of pixel to add as padding if pad_horizontal is True. the same
+            amount will be added on the top and on the bottom of the image.
+
+        augment_patches : Bool = False
+            Flag to indicate if augmentation has to be applied after patches have been
+            divided.
+
+        color_invert : Bool = True
+            Flag to indicate if patches need to be color inverted or not.
+
+        binarize : Bool = True
+            Flag to indicate whether patches have to be binarized or not. After
+            binarization patches are casted to float.
+
+        binarize_threshold : float = 1e-6
+            Threshold to identify a pixel as True
+
         """
 
         self.shape = img_shape
@@ -43,21 +78,26 @@ class ECGDataset(object):
 
         self.patches_set = self._createPatchesSet(pad_horizontal, pad_horizontal_size,
                                                   augment_patches, batch_size,
-                                                  color_invert, one_hot_encode,
+                                                  color_invert, binarize,
                                                   binarize_threshold)
 
 
     def _loadDataset(self, path_to_img, seed):
         """
+        Creates a tf.data.Dataset object loading images from path_to_img
 
         Parameters
         ----------
-        img_gen
-        path_to_img
-        seed
+        path_to_img : String
+            The location of images to be loaded
+
+        seed : int
+            The seed for image shuffling
 
         Returns
         -------
+        data_set : tf.data.Dataset
+            A dataset containing the images.
 
         """
 
@@ -86,7 +126,7 @@ class ECGDataset(object):
 
 
     def _createPatchesSet(self, pad_horizontal, pad_horizontal_size, augment_patches,
-                          batch_size, color_invert, one_hot_encode, binarize_threshold):
+                          batch_size, color_invert, binarize, binarize_threshold):
         """
 
         Parameters
@@ -95,7 +135,7 @@ class ECGDataset(object):
         pad_horizontal_size
         augment_patches
         color_invert
-        one_hot_encode
+        binarize
         binarize_threshold
 
         Returns
@@ -166,7 +206,7 @@ class ECGDataset(object):
             num_parallel_calls=tf.data.AUTOTUNE
             )
 
-        if one_hot_encode:
+        if binarize:
             patches_set = patches_set.map(
                 lambda x: tf.cast(
                     tf.math.greater(x, binarize_threshold), dtype=tf.float32
