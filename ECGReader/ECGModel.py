@@ -19,6 +19,19 @@ class ECGModel(object):
 
     def __init__(self, train_ecgs, train_masks, test_ecgs, test_masks,
                  val_ecgs, val_masks, from_saved=False, saved_model_path=None):
+        """
+
+        Parameters
+        ----------
+        train_ecgs
+        train_masks
+        test_ecgs
+        test_masks
+        val_ecgs
+        val_masks
+        from_saved
+        saved_model_path
+        """
 
         self.patch_shape = train_ecgs.patch_shape
 
@@ -51,6 +64,14 @@ class ECGModel(object):
 
 
     def _getModel(self):
+        """
+
+        Returns
+        -------
+
+        """
+        layers_activation = "relu"
+
         inputs = keras.Input(shape=self.patch_shape + (1,))
 
         """
@@ -63,17 +84,17 @@ class ECGModel(object):
             padding="same"
             )(inputs)
         x = layers.BatchNormalization()(x)
-        x = layers.Activation("relu")(x)
+        x = layers.Activation(layers_activation)(x)
         previous_block_activation = [x]
         x = layers.MaxPooling2D(3, strides=2, padding="same")(x)
 
         # Blocks 1, 2, 3 are identical apart from the feature depth.
         for filters in [64, 128, 256]:
-            x = layers.Activation("relu")(x)
+            x = layers.Activation(layers_activation)(x)
             x = layers.SeparableConv2D(filters, 3, padding="same")(x)
             x = layers.BatchNormalization()(x)
 
-            x = layers.Activation("relu")(x)
+            x = layers.Activation(layers_activation)(x)
             x = layers.SeparableConv2D(filters, 3, padding="same")(x)
             x = layers.BatchNormalization()(x)
 
@@ -86,11 +107,11 @@ class ECGModel(object):
 
         print(previous_block_activation)
         for i, filters in enumerate([256, 128, 64, 32]):
-            x = layers.Activation("relu")(x)
+            x = layers.Activation(layers_activation)(x)
             x = layers.Conv2DTranspose(filters, 3, padding="same")(x)
             x = layers.BatchNormalization()(x)
 
-            x = layers.Activation("relu")(x)
+            x = layers.Activation(layers_activation)(x)
             x = layers.Conv2DTranspose(filters, 3, padding="same")(x)
             x = layers.BatchNormalization()(x)
             x = layers.UpSampling2D(2)(x)
@@ -108,6 +129,16 @@ class ECGModel(object):
 
 
     def _computeWeights(self, patches):
+        """
+
+        Parameters
+        ----------
+        patches
+
+        Returns
+        -------
+
+        """
         print('-' * _string_mult)
         print('Computing weigths')
 
@@ -123,6 +154,12 @@ class ECGModel(object):
 
 
     def _compileModel(self):
+        """
+
+        Returns
+        -------
+
+        """
         keras.backend.clear_session()
         self.model.compile(
             optimizer=tf.keras.optimizers.Adam(),
@@ -137,15 +174,25 @@ class ECGModel(object):
 
 
     def fitModel(self, epochs=1, learning_rate=1e-3, validation_frequency=1):
+        """
+
+        Parameters
+        ----------
+        epochs
+        learning_rate
+        validation_frequency
+
+        Returns
+        -------
+
+        """
 
         tf.keras.backend.set_value(self.model.optimizer.learning_rate, learning_rate)
 
-        history = self.model.fit(
+        self.history = self.model.fit(
             self.train_set, epochs=epochs, callbacks=self.callbacks, shuffle=True,
             validation_data=self.val_set, validation_freq=validation_frequency
             )
-
-        self.model_history.append(history)
 
 
     def evaluateAndVisualize(self, visualize=True, save=False, save_path=None):
@@ -205,7 +252,17 @@ class ECGModel(object):
                 plt.show()
 
 
-    def visualizeHistory(self, fit_instance_index=-1, save=False):
+    def visualizeHistory(self, save=False):
+        """
+
+        Parameters
+        ----------
+        save
+
+        Returns
+        -------
+
+        """
 
         loss = self.history.history['loss'][-1]
         acc = self.history.history['precision'][-1]
