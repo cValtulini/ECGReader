@@ -138,7 +138,7 @@ class ECGModel(object):
             for (ecg, mask) in self.test_set:
                 predicted = self.model.predict(ecg)
 
-                fig, ax = plt.subplots(3, 5)
+                fig, ax = plt.subplots(3, 5, figsize=(50 / 2.54, 25 / 2.54))
                 for i in range(5):
                     t = np.random.randint(0, ecg.numpy().shape[0])
 
