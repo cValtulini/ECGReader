@@ -3,7 +3,7 @@ from sys import argv
 import numpy as np
 import tensorflow as tf
 from tensorflow import keras
-from keras import layers, metrics, optimizers, losses
+from keras import layers, metrics, losses
 from matplotlib import pyplot as plt
 import imgaug
 from ECGDataset import ECGDataset
@@ -112,7 +112,7 @@ class ECGModel(object):
         if self.to_be_compiled:
             keras.backend.clear_session()
             self.model.compile(
-                optimizer=optimizers.Adam(learning_rate=learning_rate),
+                optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate),
                 loss=losses.BinaryCrossentropy(),
                 metrics=[metrics.Precision(), metrics.Recall()]
                 )
