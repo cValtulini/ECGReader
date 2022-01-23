@@ -128,18 +128,35 @@ class ECGDataset(object):
     def _createPatchesSet(self, pad_horizontal, pad_horizontal_size, augment_patches,
                           batch_size, color_invert, binarize, binarize_threshold):
         """
+        Creates a tf.data.Dataset of patches from self.data_set.
 
         Parameters
         ----------
-        pad_horizontal
-        pad_horizontal_size
-        augment_patches
-        color_invert
-        binarize
-        binarize_threshold
+        pad_horizontal : Bool = False
+            Flag to indicate if the images are to be padded in height before creating
+            patches.
+
+        pad_horizontal_size : int = None
+            The amount of pixel to add as padding if pad_horizontal is True. the same
+            amount will be added on the top and on the bottom of the image.
+
+        augment_patches : Bool = False
+            Flag to indicate if augmentation has to be applied after patches have been
+            divided.
+
+        color_invert : Bool = True
+            Flag to indicate if patches need to be color inverted or not.
+
+        binarize : Bool = True
+            Flag to indicate whether patches have to be binarized or not. After
+            binarization patches are casted to float.
+
+        binarize_threshold : float = 1e-6
+            Threshold to identify a pixel as True
 
         Returns
         -------
+        patches_set : tf.data.Dataset
 
         """
         patches_set = self.data_set.take(-1)
