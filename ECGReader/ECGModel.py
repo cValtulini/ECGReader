@@ -67,7 +67,7 @@ class ECGModel(object):
         x = layers.MaxPooling2D(3, strides=2, padding="same")(x)
 
         # Blocks 1, 2, 3 are identical apart from the feature depth.
-        for filters in [64, 128]:
+        for filters in [64, 128, 256]:
             x = layers.Activation("relu")(x)
             x = layers.SeparableConv2D(filters, 3, padding="same")(x)
             x = layers.BatchNormalization()(x)
@@ -84,7 +84,7 @@ class ECGModel(object):
         """
 
         print(previous_block_activation)
-        for i, filters in enumerate([128, 64, 32]):
+        for i, filters in enumerate([256, 128, 64, 32]):
             x = layers.Activation("relu")(x)
             x = layers.Conv2DTranspose(filters, 3, padding="same")(x)
             x = layers.BatchNormalization()(x)
@@ -95,14 +95,6 @@ class ECGModel(object):
             x = layers.UpSampling2D(2)(x)
 
             # Project residual
-            # crop_shape = (
-            #     (previous_block_activation[-(i + 1)].shape[1] - x.shape[1]) // 2,
-            #     (previous_block_activation[-(i + 1)].shape[2] - x.shape[2]) // 2
-            #     )
-            # residual = layers.Cropping2D(crop_shape)(
-            #   previous_block_activation[-(i + 1)]
-            #   )
-
             residual = previous_block_activation[-(i + 1)]
             x = layers.add([x, residual])  # Add back residual
             # previous_block_activation = x  # Set aside next residual
@@ -124,7 +116,7 @@ class ECGModel(object):
             mask_pixel_mean += np.sum(patch.numpy()) / patch.numpy().size
             mask_count += 1
 
-        print(1 - (mask_pixel_mean / mask_count))
+        print(f'Weight: {1 - (mask_pixel_mean / mask_count)}')
         print('-' * _string_mult)
         return 1 - (mask_pixel_mean / mask_count)
 
@@ -166,8 +158,8 @@ class ECGModel(object):
             for ecg_number, (ecg, mask) in enumerate(self.test_set):
                 predicted = self.model.predict(ecg)
 
-                fig, ax = plt.subplots(3, 5, figsize=(70 / 2.54, 35 / 2.54))
-                plt.subplots_adjust(wspace=0.05, hspace=0.3)
+                fig, ax = plt.subplots(3, 5, figsize=(60 / 2.54, 30 / 2.54))
+                plt.subplots_adjust(wspace=0.05, hspace=0.15)
                 for i in range(5):
                     t = np.random.randint(0, ecg.numpy().shape[0])
 
@@ -195,12 +187,12 @@ class ECGModel(object):
             print("Model hasn't been compiled yet")
             return
 
-        for index, (ecg, mask) in enumerate(self.test_set.take(ecg_number)):
+        for index, (ecg, mask) in enumerate(self.test_set.take(ecg_number + 1)):
             if index == ecg_number:
                 predicted = self.model.predict(ecg)
 
-                fig, ax = plt.subplots(1, 3, figsize=(70 / 2.54, 35 / 2.54))
-                plt.subplots_adjust(wspace=0.05, hspace=0.3)
+                fig, ax = plt.subplots(1, 3, figsize=(30 / 2.54, 30 / 2.54))
+                plt.subplots_adjust(wspace=0.05, hspace=0.15)
 
                 ax[0, 0].imshow(ecg[patch_number, :, :, 0], cmap='gray')
                 ax[0, 0].title.set_text(f'ECG {ecg_number} PATCH {patch_number}')
@@ -223,16 +215,18 @@ class ECGModel(object):
 
         hist = self.model_history[fit_instance_index]
 
+        loss = hist.history['loss'][-1]
+        acc = hist.history['precision'][-1]
+        rec = hist.history['recall'][-1]
+        print(f'Loss: {loss}')
+        print(f'Accuracy: {acc}')
+        print(f'Recall: {rec}')
+
         df = pd.DataFrame(
             hist.history, index=hist.epoch
             )  # create a pandas dataframe
         plt.figure(figsize=(8, 6))
         df.plot(ylim=(0, max(1, df.values.max())))  # plot all the metrics
-
-        loss = hist.history['loss'][-1]
-        acc = hist.history['precision'][-1]
-        rec = hist.history['recall'][-1]
-        plt.title('Loss: %.3f, Accuracy: %.3f, Recall: %.3f%', (loss, acc, rec))
 
         if save:
             plt.savefig('history.png')
@@ -322,8 +316,7 @@ if __name__ == '__main__':
         mask_stride
         )
 
-    basicUNet = ECGModel(train_ecg_set, train_mask_set,
+    UNetModel = ECGModel(train_ecg_set, train_mask_set,
                          test_ecg_set, test_mask_set,
                          val_ecg_set, val_mask_set
                         )
-
