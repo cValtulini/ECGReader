@@ -114,7 +114,7 @@ class ECGModel(object):
             self.model.compile(
                 optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate),
                 loss=losses.BinaryCrossentropy(),
-                loss_weight = [0.25, 0.75],
+                loss_weights=[0.25, 0.75],
                 metrics=[metrics.Precision(), metrics.Recall()]
                 )
             self.callbacks.append(
