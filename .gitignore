@@ -1,6 +1,5 @@
-basic_unet.ckpt/
+.vs/
 **/.DS_Store
 .idea
 *.ipynb
 .vscode
-basic_unet.ckpt/
