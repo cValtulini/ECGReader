@@ -338,7 +338,7 @@ if __name__ == '__main__':
     train_ecg_set = ECGDataset(
         ecg_shape, ecg_train_path, train_set_card, ecg_patch_shape,
         ecg_stride, pad_horizontal=True, pad_horizontal_size=ecg_pad,
-        augment_patches=True, one_hot_encode=False
+        augment_patches=True, binarize=False
         )
     train_mask_set = ECGDataset(
         mask_shape, mask_train_path, train_set_card, mask_patch_shape,
@@ -348,7 +348,7 @@ if __name__ == '__main__':
     val_ecg_set = ECGDataset(
         ecg_shape, ecg_val_path, val_set_card, ecg_patch_shape,
         ecg_stride, pad_horizontal=True, pad_horizontal_size=ecg_pad,
-        augment_patches=True, one_hot_encode=False
+        augment_patches=True, binarize=False
         )
     val_mask_set = ECGDataset(
         mask_shape, mask_val_path, val_set_card, mask_patch_shape,
@@ -358,7 +358,7 @@ if __name__ == '__main__':
     test_ecg_set = ECGDataset(
         ecg_shape, ecg_test_path, test_set_card, ecg_patch_shape,
         ecg_stride, pad_horizontal=True, pad_horizontal_size=ecg_pad,
-        augment_patches=True, one_hot_encode=False
+        augment_patches=True, binarize=False
         )
     test_mask_set = ECGDataset(
         mask_shape, mask_test_path, test_set_card, mask_patch_shape,
