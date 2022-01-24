@@ -2,7 +2,7 @@
 Creates mask etc.
 """
 import os
-import SPxml
+# import SPxml
 import numpy as np
 from matplotlib import pyplot as plt
 from imgaug import augmenters as iaa
