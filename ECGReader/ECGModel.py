@@ -20,17 +20,39 @@ class ECGModel(object):
     def __init__(self, train_ecgs, train_masks, test_ecgs, test_masks,
                  val_ecgs, val_masks, from_saved=False, saved_model_path=None):
         """
+        Creates an ECGModel object, containing the patch shape for ecg,
+        two dictionaries of ECGDataset objects for ecgs and masks, with keys `train`,
+        `test`, and `set`, and three tf.data.Dataset containing ecg and masks patches
+        for train test and validation. Also contains a list of callbacks for a keras
+        model, the keras model, weights for the loss function and a history attribute.
 
         Parameters
         ----------
-        train_ecgs
-        train_masks
-        test_ecgs
-        test_masks
-        val_ecgs
-        val_masks
-        from_saved
-        saved_model_path
+        train_ecgs : ECGDataset
+            Contains images and patches for the training set.
+
+        train_masks : ECGDataset
+            Contains images and patches for the ground truth of the training set.
+
+        test_ecgs : ECGDataset
+            Contains images and patches for the test set.
+
+        test_masks : ECGDataset
+            Contains images and patches for the ground truth of the test set.
+
+        val_ecgs : ECGDataset
+            Contains images and patches for the validation set.
+
+        val_masks : ECGDataset
+            Contains images and patches for the ground truth of the validation set.
+
+        from_saved : bool = False
+            Flag, if true loads the model from a saved tensorflow model instead of
+            creating it from scratch.
+
+        saved_model_path : string
+            The path of the tensorflow model to be loaded.
+
         """
 
         self.patch_shape = train_ecgs.patch_shape
@@ -65,9 +87,12 @@ class ECGModel(object):
 
     def _getModel(self):
         """
+        Returns a tf.keras.Model object resembling a UNet architecture.
 
         Returns
         -------
+        : tf.keras.Model
+            The model, to be compiled.
 
         """
         layers_activation = "relu"
@@ -130,13 +155,18 @@ class ECGModel(object):
 
     def _computeWeights(self, patches):
         """
+        Compute class weights based on a tf.data.Dataset object contents.
 
         Parameters
         ----------
-        patches
+        patches : tf.data.Dataset
+            A Dataset containing binary patches (or images) indicating the class of the
+            corresponding pixels.
 
         Returns
         -------
+        : float
+            The weights of the class to be identified, to be passed to the loss function.
 
         """
         print('-' * _string_mult)
@@ -155,9 +185,12 @@ class ECGModel(object):
 
     def _compileModel(self):
         """
+            Clears the keras session and compiles a model with Adam optimizer,
+            Dice loss and Precision and Recall as metrics.
 
         Returns
         -------
+        None
 
         """
         keras.backend.clear_session()
@@ -175,15 +208,23 @@ class ECGModel(object):
 
     def fitModel(self, epochs=1, learning_rate=1e-3, validation_frequency=1):
         """
+            Sets the learning rate for the model and calls the fit function,
+            saving history results in the history attribute.
 
         Parameters
         ----------
-        epochs
-        learning_rate
-        validation_frequency
+        epochs : int = 1
+            The number of epochs of training.
+
+        learning_rate : float = 1e-3
+            The learning rate for the optimizer.
+
+        validation_frequency : int = 1
+            Number of training epochs before performing validation.
 
         Returns
         -------
+        None
 
         """
 
@@ -196,6 +237,27 @@ class ECGModel(object):
 
 
     def evaluateAndVisualize(self, visualize=True, save=False, save_path=None):
+        """
+        Calls the evaluate method on the test_set and visualize five random patches
+        from each ECGDataset, showing the ECG's patch, the predicted patch and the mask's
+        patch.
+
+        Parameters
+        ----------
+        visualize : bool = True
+            Flag, indicates if patches have to be visualized or if the method just has
+            to carry out evaluation.
+
+        save : bool = False
+            Flag, indicates if figures has to be saved or just to be plotted.
+
+        save_path : string
+            The path where figures are saved.
+
+        Returns
+        -------
+
+        """
 
         self.model.evaluate(self.test_set)
 
@@ -224,11 +286,27 @@ class ECGModel(object):
                 plt.show()
 
                 if save:
-                    plt.savefig(save_path+f'figure_number_{figure_number}')
+                    plt.savefig(save_path+f'/figure_number_{figure_number}')
                     figure_number += 1
 
 
     def visualizePatch(self, ecg_number, patch_number):
+        """
+        Show a figure for a single patch.
+
+        Parameters
+        ----------
+        ecg_number : int
+            The index of the ECG in the dataset.
+
+        patch_number : int
+            The patch number in the ECG
+
+        Returns
+        -------
+        None
+
+        """
 
         for index, (ecg, mask) in enumerate(self.test_set.take(ecg_number + 1)):
             if index == ecg_number:
@@ -252,15 +330,19 @@ class ECGModel(object):
                 plt.show()
 
 
-    def visualizeHistory(self, save=False):
+    def visualizeHistory(self, save=False, save_path=None):
         """
+        Visualize training history of the model.
 
         Parameters
         ----------
-        save
+        save : bool = True
+            Flag, indicates if the results have to be saved instead of only shown.
 
         Returns
         -------
+        save_path : string
+            The path where the figure is saved.
 
         """
 
@@ -278,7 +360,7 @@ class ECGModel(object):
         df.plot(ylim=(0, max(1, df.values.max())))  # plot all the metrics
 
         if save:
-            plt.savefig('history.png')
+            plt.savefig(save_path + f'/history.png')
 
 
 def show(img, title=None):
