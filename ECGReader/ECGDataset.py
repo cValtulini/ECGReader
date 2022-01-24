@@ -116,6 +116,8 @@ class ECGDataset(object):
             num_parallel_calls=tf.data.AUTOTUNE
             )
 
+        # Executed otherwise the first dimension of the tensor is undetermined and
+        # following operation will launch exceptions
         data_set = data_set.unbatch()
         data_set = data_set.batch(1, drop_remainder=True)
 
@@ -159,6 +161,8 @@ class ECGDataset(object):
         patches_set : tf.data.Dataset
 
         """
+
+        # Copies the data_set
         patches_set = self.data_set.take(-1)
 
         if color_invert:
@@ -192,6 +196,7 @@ class ECGDataset(object):
             num_parallel_calls=tf.data.AUTOTUNE
             )
 
+        # Saves the number of elements in a batch, i.e. the number of patches in an image
         self.patches_per_image = patches_set.element_spec.shape[0]
 
         if not isinstance(batch_size, type(None)):
@@ -202,6 +207,8 @@ class ECGDataset(object):
         self.n_patches = self.n_images * self.patches_per_image
 
         if augment_patches:
+            # After the numpy function the shape of an element of the dataset is
+            # unknown, we save it to restore it later
             in_shape = patches_set.element_spec.shape
 
             augmenter = createAugmenter()
@@ -218,11 +225,15 @@ class ECGDataset(object):
                 num_parallel_calls=tf.data.AUTOTUNE
                 )
 
+        # Normalizes images to 0.0 - 1.0
         patches_set = patches_set.map(
             lambda x: tf.cast(x, dtype=tf.float32) / 255.0,
             num_parallel_calls=tf.data.AUTOTUNE
             )
 
+        # Computes the mask from mask patches: since the image is downsampled we don't
+        # have values equal to 0 or 255 anymore, then we create the binary image
+        # setting a threshold and then casting to float.
         if binarize:
             patches_set = patches_set.map(
                 lambda x: tf.cast(
