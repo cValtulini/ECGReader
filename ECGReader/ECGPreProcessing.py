@@ -158,9 +158,11 @@ def masksPlotterXML(source_png_path, source_xml_path, destination_path):
 
 def createAugmenter():
     """
+    Create an augmenter to add noise to images.
 
     Returns
     -------
+    augmenter : imgaug.augmenters.Augmenter
 
     """
     augmenter = iaa.SomeOf(
