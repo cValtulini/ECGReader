@@ -3,3 +3,4 @@
 .idea
 *.ipynb
 .vscode
+ECGReader/__pycache__/
