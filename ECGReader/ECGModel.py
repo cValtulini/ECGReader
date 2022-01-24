@@ -318,8 +318,8 @@ if __name__ == '__main__':
     # original_ecg_shape = (4410, 9082)
 
     # We define mask and ecg overall shape based on patches parameters
-    mask_patch_shape = (220, 120)
-    ecg_patch_shape = (220, 120)
+    mask_patch_shape = (256, 128)
+    ecg_patch_shape = (256, 128)
 
     mask_stride = (mask_patch_shape[0], mask_patch_shape[1] // 2)
     ecg_stride = (ecg_patch_shape[0] // 2, ecg_patch_shape[1] // 2)
