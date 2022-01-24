@@ -114,7 +114,7 @@ class ECGModel(object):
         x = layers.MaxPooling2D(3, strides=2, padding="same")(x)
 
         # Blocks 1, 2, 3 are identical apart from the feature depth.
-        for filters in [64, 128]:
+        for filters in [64, 128, 256]:
             x = layers.Activation(layers_activation)(x)
             x = layers.SeparableConv2D(filters, 3, padding="same")(x)
             x = layers.BatchNormalization()(x)
@@ -131,7 +131,7 @@ class ECGModel(object):
         """
 
         print(previous_block_activation)
-        for i, filters in enumerate([128, 64, 32]):
+        for i, filters in enumerate([256, 128, 64, 32]):
             x = layers.Activation(layers_activation)(x)
             x = layers.Conv2DTranspose(filters, 3, padding="same")(x)
             x = layers.BatchNormalization()(x)
@@ -400,8 +400,8 @@ if __name__ == '__main__':
     # original_ecg_shape = (4410, 9082)
 
     # We define mask and ecg overall shape based on patches parameters
-    mask_patch_shape = (200, 128)
-    ecg_patch_shape = (200, 128)
+    mask_patch_shape = (256, 128)
+    ecg_patch_shape = (256, 128)
 
     mask_stride = (mask_patch_shape[0], mask_patch_shape[1] // 2)
     ecg_stride = (ecg_patch_shape[0] // 2, ecg_patch_shape[1] // 2)
