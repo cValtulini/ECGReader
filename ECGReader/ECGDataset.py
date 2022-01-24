@@ -44,7 +44,7 @@ class ECGDataset(object):
             The seed for operation involving randomness applied on the datasets (
             loading and augmentation).
 
-        pad_horizontal : Bool = False
+        pad_horizontal : bool = False
             Flag to indicate if the images are to be padded in height before creating
             patches.
 
@@ -52,14 +52,14 @@ class ECGDataset(object):
             The amount of pixel to add as padding if pad_horizontal is True. the same
             amount will be added on the top and on the bottom of the image.
 
-        augment_patches : Bool = False
+        augment_patches : bool = False
             Flag to indicate if augmentation has to be applied after patches have been
             divided.
 
-        color_invert : Bool = True
+        color_invert : bool = True
             Flag to indicate if patches need to be color inverted or not.
 
-        binarize : Bool = True
+        binarize : bool = True
             Flag to indicate whether patches have to be binarized or not. After
             binarization patches are casted to float.
 
@@ -132,7 +132,7 @@ class ECGDataset(object):
 
         Parameters
         ----------
-        pad_horizontal : Bool = False
+        pad_horizontal : bool = False
             Flag to indicate if the images are to be padded in height before creating
             patches.
 
@@ -140,14 +140,14 @@ class ECGDataset(object):
             The amount of pixel to add as padding if pad_horizontal is True. the same
             amount will be added on the top and on the bottom of the image.
 
-        augment_patches : Bool = False
+        augment_patches : bool = False
             Flag to indicate if augmentation has to be applied after patches have been
             divided.
 
-        color_invert : Bool = True
+        color_invert : bool = True
             Flag to indicate if patches need to be color inverted or not.
 
-        binarize : Bool = True
+        binarize : bool = True
             Flag to indicate whether patches have to be binarized or not. After
             binarization patches are casted to float.
 
