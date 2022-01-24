@@ -174,6 +174,8 @@ class ECGModel(object):
 
         mask_pixel_mean = 0
         mask_count = 0
+
+        # Computes the mean number of "1" pixels over the patches in the dataset
         for patch in tqdm(patches.take(-1)):
             mask_pixel_mean += np.sum(patch.numpy()) / patch.numpy().size
             mask_count += 1
@@ -194,11 +196,13 @@ class ECGModel(object):
 
         """
         keras.backend.clear_session()
+
         self.model.compile(
             optimizer=tf.keras.optimizers.Adam(),
             loss=segmentation_models.losses.DiceLoss(class_weights=[self.weights]),
             metrics=[metrics.Precision(), metrics.Recall()]
             )
+
         self.callbacks.append(
                 keras.callbacks.ModelCheckpoint(
                     'unet_model', save_best_only=True
