@@ -23,7 +23,7 @@ class ECGDataset(object):
         img_shape : Tuple[int]
             The shape of one image in the dataset.
 
-        path_to_img : String
+        path_to_img : string
             Path to the images folder.
 
         n_images : int
@@ -88,7 +88,7 @@ class ECGDataset(object):
 
         Parameters
         ----------
-        path_to_img : String
+        path_to_img : string
             The location of images to be loaded
 
         seed : int
