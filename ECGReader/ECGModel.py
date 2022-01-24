@@ -89,7 +89,7 @@ class ECGModel(object):
         x = layers.MaxPooling2D(3, strides=2, padding="same")(x)
 
         # Blocks 1, 2, 3 are identical apart from the feature depth.
-        for filters in [64, 128, 256]:
+        for filters in [64, 128]:
             x = layers.Activation(layers_activation)(x)
             x = layers.SeparableConv2D(filters, 3, padding="same")(x)
             x = layers.BatchNormalization()(x)
@@ -106,7 +106,7 @@ class ECGModel(object):
         """
 
         print(previous_block_activation)
-        for i, filters in enumerate([256, 128, 64, 32]):
+        for i, filters in enumerate([128, 64, 32]):
             x = layers.Activation(layers_activation)(x)
             x = layers.Conv2DTranspose(filters, 3, padding="same")(x)
             x = layers.BatchNormalization()(x)
