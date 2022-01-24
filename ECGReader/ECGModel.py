@@ -177,7 +177,7 @@ class ECGModel(object):
 
         # Computes the mean number of "1" pixels over the patches in the dataset
         for patch in tqdm(patches.take(-1)):
-            mask_pixel_mean += np.sum(patch.numpy()) / patch.numpy().size
+            mask_pixel_mean += tf.reduce_sum(patch).numpy() / patch.numpy().size
             mask_count += 1
 
         print(f'Weight: {1 - (mask_pixel_mean / mask_count)}')
