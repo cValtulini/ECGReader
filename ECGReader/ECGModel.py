@@ -80,7 +80,7 @@ class ECGModel(object):
             self.model = keras.models.load_model(saved_model_path)
         elif from_segmentation_models:
             self.model = segmentation_models.Unet(
-                backbone_name='vgg16', input_shape=(None, None, 1), classes=1,
+                backbone_name='vgg16', input_shape=(None, None, 3), classes=1,
                 activation='sigmoid', encoder_weights='imagenet', encoder_freeze=True,
                 decoder_block_type='upsampling', decoder_filters=(128, 64, 32, 16)
                 )
@@ -107,7 +107,7 @@ class ECGModel(object):
         """
         layers_activation = "relu"
 
-        inputs = keras.Input(shape=self.patch_shape + (1,))
+        inputs = keras.Input(shape=self.patch_shape + (3,))
 
         """
         [First half of the network: down-sampling inputs]
@@ -115,7 +115,7 @@ class ECGModel(object):
 
         # Entry block
         x = layers.Conv2D(
-            32, 3,  # strides=2,
+            16, 3,  # strides=2,
             padding="same"
             )(inputs)
         x = layers.BatchNormalization()(x)
@@ -124,7 +124,7 @@ class ECGModel(object):
         x = layers.MaxPooling2D(3, strides=2, padding="same")(x)
 
         # Blocks 1, 2, 3 are identical apart from the feature depth.
-        for filters in [64, 128]:
+        for filters in [32, 64, 128]:
             x = layers.Activation(layers_activation)(x)
             x = layers.SeparableConv2D(filters, 3, padding="same")(x)
             x = layers.BatchNormalization()(x)
@@ -141,7 +141,7 @@ class ECGModel(object):
         """
 
         print(previous_block_activation)
-        for i, filters in enumerate([128, 64, 32]):
+        for i, filters in enumerate([128, 64, 32, 16]):
             x = layers.Activation(layers_activation)(x)
             x = layers.Conv2DTranspose(filters, 3, padding="same")(x)
             x = layers.BatchNormalization()(x)

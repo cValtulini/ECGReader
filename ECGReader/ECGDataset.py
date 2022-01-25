@@ -108,7 +108,7 @@ class ECGDataset(object):
 
         # Creating the data set from the ImageDataGenerator object.
         data_set = tf.keras.utils.image_dataset_from_directory(
-            path_to_img, labels=None, label_mode=None, color_mode='grayscale',
+            path_to_img, labels=None, label_mode=None, color_mode='rgb',
             batch_size=1, image_size=self.shape, shuffle=False, seed=seed
             )
         data_set = data_set.map(
@@ -191,7 +191,7 @@ class ECGDataset(object):
                     rates=[1, 1, 1, 1],
                     padding='VALID'
                     ),
-                [-1, self.patch_shape[0], self.patch_shape[1], 1]
+                [-1, self.patch_shape[0], self.patch_shape[1], 3]
                 ),
             num_parallel_calls=tf.data.AUTOTUNE
             )
