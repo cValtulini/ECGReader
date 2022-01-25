@@ -18,7 +18,8 @@ _string_mult = 100
 class ECGModel(object):
 
     def __init__(self, train_ecgs, train_masks, test_ecgs, test_masks,
-                 val_ecgs, val_masks, from_saved=False, saved_model_path=None):
+                 val_ecgs, val_masks, from_saved=False,
+                 from_segmentation_models=False, saved_model_path=None):
         """
         Creates an ECGModel object, containing the patch shape for ecg,
         two dictionaries of ECGDataset objects for ecgs and masks, with keys `train`,
@@ -50,6 +51,8 @@ class ECGModel(object):
             Flag, if true loads the model from a saved tensorflow model instead of
             creating it from scratch.
 
+        from_segmentation_modesl: bool = False
+
         saved_model_path : string
             The path of the tensorflow model to be loaded.
 
@@ -75,6 +78,12 @@ class ECGModel(object):
 
         if from_saved:
             self.model = keras.models.load_model(saved_model_path)
+        elif from_segmentation_models:
+            self.model = segmentation_models.Unet(
+                backbone_name='vgg16', input_shape=(None, None, 1), classes=1,
+                activation='sigmoid', encoder_weights='imagenet', encoder_freeze=True,
+                decoder_block_type='upsampling', decoder_filters=(128, 64, 32, 16)
+                )
         else:
             self.model = self._getModel()
 
@@ -83,6 +92,7 @@ class ECGModel(object):
         self._compileModel()
 
         self.history = None
+        self.history_list = []
 
 
     def _getModel(self):
@@ -239,13 +249,15 @@ class ECGModel(object):
             validation_data=self.val_set, validation_freq=validation_frequency
             )
 
+        self.history_list.append(self.history)
+
 
     def evaluateAndVisualize(self, visualize=True, save=False, save_path=None):
         """
         Calls the evaluate method on the test_set and visualize five random patches
         from each ECGDataset, showing the ECG's patch, the predicted patch and the mask's
         patch.
-
+p
         Parameters
         ----------
         visualize : bool = True
@@ -357,11 +369,43 @@ class ECGModel(object):
         print(f'Accuracy: {acc}')
         print(f'Recall: {rec}')
 
-        df = pd.DataFrame(
-            self.history.history, index=self.history.epoch
-            )  # create a pandas dataframe
+        plot_loss = UNetModel.history.history['loss']
+        plot_prec = UNetModel.history.history['precision']
+        plot_rec = UNetModel.history.history['recall']
+
+        plot_val_loss = UNetModel.history.history['val_loss']
+        plot_val_prec = UNetModel.history.history['val_precision']
+        plot_val_rec = UNetModel.history.history['val_recall']
+
         plt.figure(figsize=(8, 6))
-        df.plot(ylim=(0, max(1, df.values.max())))  # plot all the metrics
+        plt.plot(plot_loss, label='training')
+        plt.plot(range(0, 100, 4), plot_val_loss, label='validation')
+        plt.legend()
+
+        plt.xlabel('epochs')
+        plt.ylabel('loss')
+        ax = plt.gca()
+        ax.set_ylim((0, 1))
+
+        plt.figure(figsize=(8, 6))
+        plt.plot(plot_prec, label='training')
+        plt.plot(range(0, 100, 4), plot_val_prec, label='validation')
+        plt.legend()
+
+        plt.xlabel('epochs')
+        plt.ylabel('precision')
+        ax = plt.gca()
+        ax.set_ylim((0, 1))
+
+        plt.figure(figsize=(8, 6))
+        plt.plot(plot_rec, label='training')
+        plt.plot(range(0, 100, 4), plot_val_rec, label='validation')
+        plt.legend()
+
+        plt.xlabel('epochs')
+        plt.ylabel('recall')
+        ax = plt.gca()
+        ax.set_ylim((0, 1))
 
         if save:
             plt.savefig(save_path + f'/history.png')
@@ -404,8 +448,8 @@ if __name__ == '__main__':
     # original_ecg_shape = (4410, 9082)
 
     # We define mask and ecg overall shape based on patches parameters
-    mask_patch_shape = (200, 128)
-    ecg_patch_shape = (200, 128)
+    mask_patch_shape = (256, 128)
+    ecg_patch_shape = (256, 128)
 
     mask_stride = (mask_patch_shape[0], mask_patch_shape[1] // 2)
     ecg_stride = (ecg_patch_shape[0] // 2, ecg_patch_shape[1] // 2)
