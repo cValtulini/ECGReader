@@ -11,7 +11,7 @@ _string_mult = 100
 class ECGDataset(object):
 
     def __init__(self, img_shape, path_to_img, n_images, patch_shape,
-                 stride_shape, batch_size=None, seed=42, pad_horizontal=False,
+                 stride_shape, mask=False, batch_size=None, seed=42, pad_horizontal=False,
                  pad_horizontal_size=None, augment_patches=False, color_invert=True,
                  binarize=True, binarize_threshold=1e-6):
         """
@@ -35,6 +35,8 @@ class ECGDataset(object):
         stride_shape : Tuple[int]
             Strides into the height and width directions when dividing images into
             patches.
+
+        mask : bool = False
 
         batch_size : int = None
             Size of a batch of `patches_set` if None a batch will be formed by the number
@@ -71,18 +73,18 @@ class ECGDataset(object):
         self.shape = img_shape
         self.n_images = n_images
 
-        self.data_set = self._loadDataset(path_to_img, seed)
+        self.data_set = self._loadDataset(path_to_img, mask, seed)
 
         self.patch_shape = patch_shape
         self.stride_shape = stride_shape
 
-        self.patches_set = self._createPatchesSet(pad_horizontal, pad_horizontal_size,
-                                                  augment_patches, batch_size,
-                                                  color_invert, binarize,
+        self.patches_set = self._createPatchesSet(mask, pad_horizontal,
+                                                  pad_horizontal_size, augment_patches,
+                                                  batch_size, color_invert, binarize,
                                                   binarize_threshold)
 
 
-    def _loadDataset(self, path_to_img, seed):
+    def _loadDataset(self, path_to_img, mask, seed):
         """
         Creates a tf.data.Dataset object loading images from path_to_img
 
@@ -107,10 +109,12 @@ class ECGDataset(object):
         # spec = tf.TensorSpec(images.shape, dtype=images.dtype)
 
         # Creating the data set from the ImageDataGenerator object.
+        color = 'grayscale' if map else 'rgb'
         data_set = tf.keras.utils.image_dataset_from_directory(
-            path_to_img, labels=None, label_mode=None, color_mode='rgb',
+            path_to_img, labels=None, label_mode=None, color_mode=color,
             batch_size=1, image_size=self.shape, shuffle=False, seed=seed
             )
+
         data_set = data_set.map(
             lambda x: tf.cast(x, dtype=tf.uint8),
             num_parallel_calls=tf.data.AUTOTUNE
@@ -127,13 +131,17 @@ class ECGDataset(object):
         return data_set
 
 
-    def _createPatchesSet(self, pad_horizontal, pad_horizontal_size, augment_patches,
+    def _createPatchesSet(self, mask, pad_horizontal, pad_horizontal_size,
+                          augment_patches,
                           batch_size, color_invert, binarize, binarize_threshold):
         """
         Creates a tf.data.Dataset of patches from self.data_set.
 
         Parameters
         ----------
+        mask : bool
+
+
         pad_horizontal : bool = False
             Flag to indicate if the images are to be padded in height before creating
             patches.
@@ -183,6 +191,7 @@ class ECGDataset(object):
                     num_parallel_calls=tf.data.AUTOTUNE
                     )
 
+        channels = 1 if map else 3
         patches_set = patches_set.map(
             lambda x: tf.reshape(
                 tf.image.extract_patches(
@@ -191,7 +200,7 @@ class ECGDataset(object):
                     rates=[1, 1, 1, 1],
                     padding='VALID'
                     ),
-                [-1, self.patch_shape[0], self.patch_shape[1], 3]
+                [-1, self.patch_shape[0], self.patch_shape[1], channels]
                 ),
             num_parallel_calls=tf.data.AUTOTUNE
             )
