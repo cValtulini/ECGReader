@@ -85,7 +85,7 @@ class ECGModel(object):
             self.model = segmentation_models.Unet(
                 backbone_name='vgg16', input_shape=(None, None, 3), classes=1,
                 activation='sigmoid', encoder_weights='imagenet', encoder_freeze=True,
-                decoder_block_type='upsampling', decoder_filters=(128, 64, 32, 16)
+                decoder_block_type='upsampling', decoder_filters=(128, 64, 32)
                 )
         else:
             self.model = self._getModel()
