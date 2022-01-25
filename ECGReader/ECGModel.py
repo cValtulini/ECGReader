@@ -79,6 +79,9 @@ class ECGModel(object):
         if from_saved:
             self.model = keras.models.load_model(saved_model_path)
         elif from_segmentation_models:
+            segmentation_models.set_framework('tf.keras')
+            segmentation_models.framework()
+
             self.model = segmentation_models.Unet(
                 backbone_name='vgg16', input_shape=(None, None, 3), classes=1,
                 activation='sigmoid', encoder_weights='imagenet', encoder_freeze=True,
@@ -472,7 +475,7 @@ if __name__ == '__main__':
         )
     train_mask_set = ECGDataset(
         mask_shape, mask_train_path, train_set_card, mask_patch_shape,
-        mask_stride
+        mask_stride, mask=True
         )
 
     val_ecg_set = ECGDataset(
@@ -482,7 +485,7 @@ if __name__ == '__main__':
         )
     val_mask_set = ECGDataset(
         mask_shape, mask_val_path, val_set_card, mask_patch_shape,
-        mask_stride
+        mask_stride, mask=True
         )
 
     test_ecg_set = ECGDataset(
@@ -492,7 +495,7 @@ if __name__ == '__main__':
         )
     test_mask_set = ECGDataset(
         mask_shape, mask_test_path, test_set_card, mask_patch_shape,
-        mask_stride
+        mask_stride, mask=True
         )
 
     UNetModel = ECGModel(train_ecg_set, train_mask_set,

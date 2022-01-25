@@ -109,7 +109,7 @@ class ECGDataset(object):
         # spec = tf.TensorSpec(images.shape, dtype=images.dtype)
 
         # Creating the data set from the ImageDataGenerator object.
-        color = 'grayscale' if map else 'rgb'
+        color = 'grayscale' if mask else 'rgb'
         data_set = tf.keras.utils.image_dataset_from_directory(
             path_to_img, labels=None, label_mode=None, color_mode=color,
             batch_size=1, image_size=self.shape, shuffle=False, seed=seed
@@ -191,7 +191,7 @@ class ECGDataset(object):
                     num_parallel_calls=tf.data.AUTOTUNE
                     )
 
-        channels = 1 if map else 3
+        channels = 1 if mask else 3
         patches_set = patches_set.map(
             lambda x: tf.reshape(
                 tf.image.extract_patches(
