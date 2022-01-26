@@ -89,7 +89,11 @@ class ECGModel(object):
 
         self.weights = self._computeWeights(train_masks.patches_set)
 
+        self.unet_git = False
+
         self._compileModel(from_saved, from_segmentation_models)
+
+        self.trainer = unet.Trainer(checkpoint_callback=self.callbacks[-1])
 
         self.histories = []
         self.val_frequencies = []
@@ -123,6 +127,7 @@ class ECGModel(object):
             )
 
         return model
+
 
     def _computeWeights(self, patches):
         """
@@ -168,19 +173,21 @@ class ECGModel(object):
         """
         keras.backend.clear_session()
 
-        if True: #from_saved or from_segmentation_models:
+        if from_saved or from_segmentation_models: #from_saved or from_segmentation_models:
             self.model.compile(
                 optimizer=tf.keras.optimizers.Adam(),
                 loss=segmentation_models.losses.DiceLoss(class_weights=[self.weights]),
                 metrics=[metrics.MeanSquaredError()]
                 )
         else:
-            unet.unet.finalize_model(
+            unet.finalize_model(
                 self.model,
                 segmentation_models.losses.DiceLoss(class_weights=[self.weights]),
                 optimizer=tf.keras.optimizers.Adam(),
                 metrics=[metrics.MeanSquaredError()]
                 )
+
+            self.unet_git = True
 
         self.callbacks.append(
                 keras.callbacks.ModelCheckpoint(
@@ -210,17 +217,22 @@ class ECGModel(object):
         None
 
         """
-
         # TODO: ADD change batch size
-        tf.keras.backend.set_value(self.model.optimizer.learning_rate, learning_rate)
+        if self.unet_git:
+            self.trainer.fit(
+                self.model, self.train_set, self.val_set, self.test_set, epochs=epochs,
+                validation_freq=validation_frequency
+                )
+        else:
+            tf.keras.backend.set_value(self.model.optimizer.learning_rate, learning_rate)
 
-        history = self.model.fit(
-            self.train_set, epochs=epochs, callbacks=self.callbacks, shuffle=True,
-            validation_data=self.val_set, validation_freq=validation_frequency
-            )
+            history = self.model.fit(
+                self.train_set, epochs=epochs, callbacks=self.callbacks, shuffle=True,
+                validation_data=self.val_set, validation_freq=validation_frequency
+                )
 
-        self.histories.append(history)
-        self.val_frequencies.append(validation_frequency)
+            self.histories.append(history)
+            self.val_frequencies.append(validation_frequency)
 
 
     def evaluateAndVisualize(self, visualize=True, save=False, save_path=None):
