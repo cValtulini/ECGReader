@@ -162,7 +162,7 @@ class ECGModel(object):
 
         unet.finalize_model(
             self.model,
-            loss=tf.keras.losses.BinaryCrossEntropy(class_weights=[self.weights]),
+            loss=tf.keras.losses.BinaryCrossentropy(class_weights=[self.weights]),
             # loss=segmentation_models.losses.DiceLoss(class_weights=[self.weights]),
             optimizer=tf.keras.optimizers.Adam(),
             metrics=[metrics.MeanSquaredError()],
