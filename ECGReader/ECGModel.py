@@ -65,16 +65,19 @@ class ECGModel(object):
         self.weights = self._computeWeights(train_masks.patches_set)
 
         self.train_set = tf.data.Dataset.zip(
-            (train_ecgs.patches_set, train_masks.patches_set,
-             train_masks.patches_set.map(lambda x: x * self.weights))
+            (
+                train_ecgs.patches_set,
+                train_masks.patches_set,
+                train_masks.patches_set.map(
+                    lambda x: tf.math.add((1 - x) * (1 - self.weights), x * self.weights)
+                    )
+                )
             )
         self.test_set = tf.data.Dataset.zip(
-            (test_ecgs.patches_set, test_masks.patches_set,
-             test_masks.patches_set.map(lambda x: x * self.weights))
+            (test_ecgs.patches_set, test_masks.patches_set)
             )
         self.val_set = tf.data.Dataset.zip(
-            (val_ecgs.patches_set, val_masks.patches_set,
-             val_masks.patches_set.map(lambda x: x * self.weights))
+            (val_ecgs.patches_set, val_masks.patches_set)
             )
 
         self.callbacks = []
