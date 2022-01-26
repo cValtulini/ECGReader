@@ -4,7 +4,8 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 from tensorflow import keras
-from keras import layers, metrics, losses
+from keras import layers, metrics
+import unet
 import segmentation_models
 from matplotlib import pyplot as plt
 import imgaug
@@ -51,7 +52,7 @@ class ECGModel(object):
             Flag, if true loads the model from a saved tensorflow model instead of
             creating it from scratch.
 
-        from_segmentation_modesl: bool = False
+        from_segmentation_model: bool = False
 
         saved_model_path : string
             The path of the tensorflow model to be loaded.
@@ -90,8 +91,8 @@ class ECGModel(object):
 
         self._compileModel()
 
-        self.history = None
-        self.history_list = []
+        self.histories = []
+        self.val_frequencies = []
 
 
     def _getModel(self):
@@ -104,69 +105,20 @@ class ECGModel(object):
             The model, to be compiled.
 
         """
-        layers_activation = "relu"
+        model = unet.unet.build_model(
+            nx=self.patch_shape[1], ny=self.patch_shape[0], channels=3, num_classes=1,
+            layer_depth=4, filters_root=16, kernel_size=3, pool_size=2,
+            dropout_rate=0.1, padding='same', activation='relu'
+            )
 
-        inputs = keras.Input(shape=self.patch_shape + (3,))
-
-        """
-        [First half of the network: down-sampling inputs]
-        """
-
-        # Entry block
-        x = layers.Conv2D(
-            16, 3,  # strides=2,
-            padding="same"
-            )(inputs)
-        x = layers.BatchNormalization()(x)
-        x = layers.Activation(layers_activation)(x)
-        previous_block_activation = [x]
-        x = layers.MaxPooling2D(3, strides=2, padding="same")(x)
-
-        # Blocks 1, 2, 3 are identical apart from the feature depth.
-        for filters in [32, 64, 128]:
-            x = layers.Activation(layers_activation)(x)
-            x = layers.SeparableConv2D(filters, 3, padding="same")(x)
-            x = layers.BatchNormalization()(x)
-
-            x = layers.Activation(layers_activation)(x)
-            x = layers.SeparableConv2D(filters, 3, padding="same")(x)
-            x = layers.BatchNormalization()(x)
-
-            previous_block_activation.append(x)  # Set aside next residual
-            x = layers.MaxPooling2D(3, strides=2, padding="same")(x)
-
-        """
-        [Second half of the network: up-sampling inputs]
-        """
-
-        print(previous_block_activation)
-        for i, filters in enumerate([128, 64, 32, 16]):
-            x = layers.Activation(layers_activation)(x)
-            x = layers.Conv2DTranspose(filters, 3, padding="same")(x)
-            x = layers.BatchNormalization()(x)
-
-            x = layers.Activation(layers_activation)(x)
-            x = layers.Conv2DTranspose(filters, 3, padding="same")(x)
-            x = layers.BatchNormalization()(x)
-            x = layers.UpSampling2D(2)(x)
-
-            # Project residual
-            residual = previous_block_activation[-(i + 1)]
-            x = layers.add([x, residual])  # Add back residual
-            # previous_block_activation = x  # Set aside next residual
-
-        # Add a per-pixel classification layer
-        outputs = layers.Conv2D(1, 3, activation="sigmoid", padding="same")(x)
-
-        # Define the model
-        return keras.Model(inputs, outputs)
+            return model
 
 
     def _getModelFromSegmentation(self):
         model = segmentation_models.Unet(
-            backbone_name='inceptionresnetv2',
+            backbone_name='inceptionv3',
             input_shape=(self.patch_shape[0], self.patch_shape[1], 3), classes=1,
-            activation='sigmoid', encoder_weights='imagenet', encoder_freeze=True,
+            activation='sigmoid', encoder_weights=None,
             decoder_block_type='upsampling', decoder_filters=(128, 64, 32, 16, 8)
             )
 
@@ -219,7 +171,7 @@ class ECGModel(object):
         self.model.compile(
             optimizer=tf.keras.optimizers.Adam(),
             loss=segmentation_models.losses.DiceLoss(class_weights=[self.weights]),
-            metrics=[metrics.Precision(), metrics.Recall()]
+            metrics=[metrics.MeanSquaredError()]
             )
 
         self.callbacks.append(
@@ -251,14 +203,16 @@ class ECGModel(object):
 
         """
 
+        # TODO: ADD change batch size
         tf.keras.backend.set_value(self.model.optimizer.learning_rate, learning_rate)
 
-        self.history = self.model.fit(
+        history = self.model.fit(
             self.train_set, epochs=epochs, callbacks=self.callbacks, shuffle=True,
             validation_data=self.val_set, validation_freq=validation_frequency
             )
 
-        self.history_list.append(self.history)
+        self.histories.append(history)
+        self.val_frequencies.append(validation_frequency)
 
 
     def evaluateAndVisualize(self, visualize=True, save=False, save_path=None):
@@ -355,7 +309,7 @@ p
                 plt.show()
 
 
-    def visualizeHistory(self, save=False, save_path=None):
+    def visualizeTrainingHistory(self, save=False, save_path=None):
         """
         Visualize training history of the model.
 
@@ -364,60 +318,44 @@ p
         save : bool = True
             Flag, indicates if the results have to be saved instead of only shown.
 
-        Returns
-        -------
         save_path : string
             The path where the figure is saved.
 
+        Returns
+        -------
+
         """
 
-        loss = self.history.history['loss'][-1]
-        acc = self.history.history['precision'][-1]
-        rec = self.history.history['recall'][-1]
+        loss = self.histories[-1].history['loss'][-1]
+        mse = self.histories[-1].history['mse'][-1]
         print(f'Loss: {loss}')
-        print(f'Accuracy: {acc}')
-        print(f'Recall: {rec}')
+        print(f'Accuracy: {mse}')
 
-        plot_loss = UNetModel.history.history['loss']
-        plot_prec = UNetModel.history.history['precision']
-        plot_rec = UNetModel.history.history['recall']
+        plot_loss = self.histories[-1].history['loss']
+        plot_mse = self.histories[-1].history['mse']
 
-        plot_val_loss = UNetModel.history.history['val_loss']
-        plot_val_prec = UNetModel.history.history['val_precision']
-        plot_val_rec = UNetModel.history.history['val_recall']
+        plot_val_loss = self.histories[-1].history['val_loss']
+        plot_val_mse = self.histories[-1].history['val_mse']
 
-        plt.figure(figsize=(8, 6))
-        plt.plot(plot_loss, label='training')
-        plt.plot(range(0, 100, 4), plot_val_loss, label='validation')
-        plt.legend()
+        epoch_n = self.histories[-1].epochs
 
-        plt.xlabel('epochs')
-        plt.ylabel('loss')
-        ax = plt.gca()
-        ax.set_ylim((0, 1))
+        historyPlot(
+            plot_loss, plot_val_loss, 'loss', range(0, epoch_n, self.val_frequencies[-1]),
+            save, save_path
+            )
+        historyPlot(
+            plot_mse, plot_val_mse, 'mse',
+            range(0, epoch_n, self.val_frequencies[-1]), save, save_path
+            )
 
-        plt.figure(figsize=(8, 6))
-        plt.plot(plot_prec, label='training')
-        plt.plot(range(0, 100, 4), plot_val_prec, label='validation')
-        plt.legend()
 
-        plt.xlabel('epochs')
-        plt.ylabel('precision')
-        ax = plt.gca()
-        ax.set_ylim((0, 1))
+    def visualizeHistory(self, save=False, save_path=None):
+        if len(self.histories) > 1:
+            for val_freq, history in zip(self.val_frequencies, self.histories):
+                pass
 
-        plt.figure(figsize=(8, 6))
-        plt.plot(plot_rec, label='training')
-        plt.plot(range(0, 100, 4), plot_val_rec, label='validation')
-        plt.legend()
-
-        plt.xlabel('epochs')
-        plt.ylabel('recall')
-        ax = plt.gca()
-        ax.set_ylim((0, 1))
-
-        if save:
-            plt.savefig(save_path + f'/history.png')
+        else:
+            self.visualizeTrainingHistory(save, save_path)
 
 
 def show(img, title=None):
@@ -427,6 +365,39 @@ def show(img, title=None):
         plt.title(title)
     plt.axis('off')
     plt.show()
+
+
+def historyPlot(training_metrics, validation_metrics, name, val_frequency_array,
+                save=False, save_path=None):
+    """
+
+    Parameters
+    ----------
+    training_metrics
+    validation_metrics
+    name
+    val_frequency_array
+    save
+    save_path
+
+    Returns
+    -------
+
+    """
+    plt.figure(figsize=(8, 6))
+    plt.plot(training_metrics, label='training')
+    plt.plot(
+        val_frequency_array, validation_metrics, label='validation'
+        )
+    plt.legend()
+
+    plt.xlabel('epochs')
+    plt.ylabel(name)
+    ax = plt.gca()
+    ax.set_ylim((0, 1))
+
+    if save:
+        plt.savefig(save_path + f'/history_{name}.png')
 
 
 if __name__ == '__main__':
@@ -451,7 +422,7 @@ if __name__ == '__main__':
     ecg_cols = 2
 
     # Number of patches for each lead on the time axis (width)
-    t_patch_lead = 10
+    t_patch_lead = 8
 
     # original_mask_shape = (3149, 6102)
     # original_ecg_shape = (4410, 9082)
