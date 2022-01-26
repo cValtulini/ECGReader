@@ -109,7 +109,7 @@ class ECGModel(object):
         """
         model = sm.Unet(
             input_shape=(self.patch_shape[0], self.patch_shape[1], 3),
-            encoder_weights=None, decoder_filters=(128, 64, 32, 16)
+            encoder_weights=None, decoder_filters=(128, 64, 32, 16, 8)
             )
 
         # model = unet.build_model(
