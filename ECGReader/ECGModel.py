@@ -4,8 +4,8 @@ import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 from keras import metrics
-import unet
-# import segmentation_models
+# import unet
+import segmentation_models as sm
 from matplotlib import pyplot as plt
 import imgaug
 from tqdm import tqdm
@@ -67,10 +67,10 @@ class ECGModel(object):
         self.train_set = tf.data.Dataset.zip(
             (
                 train_ecgs.patches_set,
-                train_masks.patches_set,
-                train_masks.patches_set.map(
-                    lambda x: tf.math.add((1 - x) * (1 - self.weights), x * self.weights)
-                    )
+                train_masks.patches_set
+                # train_masks.patches_set.map(
+                #     lambda x: tf.math.add((1 - x) * (1 - self.weights), x * self.weights)
+                #     )
                 )
             )
         self.test_set = tf.data.Dataset.zip(
@@ -107,11 +107,16 @@ class ECGModel(object):
             The model, to be compiled.
 
         """
-        model = unet.build_model(
-            nx=self.patch_shape[0], ny=self.patch_shape[1], channels=3, num_classes=1,
-            layer_depth=4, filters_root=32, kernel_size=3, pool_size=2,
-            dropout_rate=0.1, padding='same', activation='sigmoid'
+        model = sm.Unet(
+            input_shape=(self.patch_shape[0], self.patch_shape[1], 3),
+            encoder_weights=None, decoder_filters=(128, 64, 32, 16)
             )
+
+        # model = unet.build_model(
+        #     nx=self.patch_shape[0], ny=self.patch_shape[1], channels=3, num_classes=1,
+        #     layer_depth=4, filters_root=32, kernel_size=3, pool_size=2,
+        #     dropout_rate=0.1, padding='same', activation='sigmoid'
+        #     )
 
         return model
 
@@ -164,7 +169,7 @@ class ECGModel(object):
 
         self.model.compile(
             optimizer=tf.keras.optimizers.Adam(),
-            loss=tf.keras.losses.MeanSquaredError(),
+            loss=sm.losses.DiceLoss(class_weights=[self.weights]),
             metrics=[metrics.MeanSquaredError()]
             )
 
@@ -187,7 +192,8 @@ class ECGModel(object):
             )
 
 
-    def fitModel(self, epochs=1, learning_rate=1e-3, validation_frequency=1):
+    def fitModel(self, epochs=1, learning_rate=1e-3, validation_frequency=1,
+                 batch_size=None):
         """
             Sets the learning rate for the model and calls the fit function,
             saving history results in the history attribute.
@@ -218,10 +224,17 @@ class ECGModel(object):
 
         tf.keras.backend.set_value(self.model.optimizer.learning_rate, learning_rate)
 
-        history = self.model.fit(
-            self.train_set, epochs=epochs, callbacks=self.callbacks, shuffle=True,
-            validation_data=self.val_set, validation_freq=validation_frequency
-            )
+        if isinstance(batch_size, type(None)):
+            history = self.model.fit(
+                self.train_set, epochs=epochs, callbacks=self.callbacks, shuffle=True,
+                validation_data=self.val_set, validation_freq=validation_frequency
+                )
+        else:
+            history = self.model.fit(
+                self.train_set.unbatch().batch(batch_size, drop_remainder=True),
+                epochs=epochs, callbacks=self.callbacks, shuffle=True,
+                validation_data=self.val_set, validation_freq=validation_frequency
+                )
 
         self.histories.append(history)
         self.val_frequencies.append(validation_frequency)
