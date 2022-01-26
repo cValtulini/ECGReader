@@ -221,7 +221,7 @@ class ECGModel(object):
         if self.unet_git:
             self.trainer.fit(
                 self.model, self.train_set, self.val_set, self.test_set, epochs=epochs,
-                validation_freq=validation_frequency
+                validation_freq=validation_frequency, batch_size=None
                 )
         else:
             tf.keras.backend.set_value(self.model.optimizer.learning_rate, learning_rate)
