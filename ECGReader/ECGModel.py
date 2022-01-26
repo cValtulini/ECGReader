@@ -82,11 +82,7 @@ class ECGModel(object):
             segmentation_models.set_framework('tf.keras')
             segmentation_models.framework()
 
-            self.model = segmentation_models.Unet(
-                backbone_name='vgg16', input_shape=(None, None, 3), classes=1,
-                activation='sigmoid', encoder_weights='imagenet', encoder_freeze=True,
-                decoder_block_type='upsampling', decoder_filters=(128, 64, 32, 16, 8)
-                )
+            self.model = self._getModelFromSegmentation()
         else:
             self.model = self._getModel()
 
@@ -165,6 +161,16 @@ class ECGModel(object):
         # Define the model
         return keras.Model(inputs, outputs)
 
+
+    def _getModelFromSegmentation(self):
+        model = segmentation_models.Unet(
+            backbone_name='inceptionresnetv2',
+            input_shape=(self.patch_shape[0], self.patch_shape[1], 3), classes=1,
+            activation='sigmoid', encoder_weights='imagenet', encoder_freeze=True,
+            decoder_block_type='upsampling', decoder_filters=(128, 64, 32, 16, 8)
+            )
+
+        return model
 
     def _computeWeights(self, patches):
         """
@@ -445,7 +451,7 @@ if __name__ == '__main__':
     ecg_cols = 2
 
     # Number of patches for each lead on the time axis (width)
-    t_patch_lead = 8
+    t_patch_lead = 10
 
     # original_mask_shape = (3149, 6102)
     # original_ecg_shape = (4410, 9082)
