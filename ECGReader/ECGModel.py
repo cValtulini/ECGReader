@@ -506,6 +506,5 @@ if __name__ == '__main__':
 
     UNetModel = ECGModel(train_ecg_set, train_mask_set,
                          test_ecg_set, test_mask_set,
-                         val_ecg_set, val_mask_set,
-                         from_segmentation_models=True
+                         val_ecg_set, val_mask_set
                         )
