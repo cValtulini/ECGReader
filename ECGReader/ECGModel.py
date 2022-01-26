@@ -3,9 +3,9 @@ from sys import argv
 import numpy as np
 import tensorflow as tf
 from tensorflow import keras
-from keras import layers, metrics
+from keras import metrics
 import unet
-import segmentation_models
+# import segmentation_models
 from matplotlib import pyplot as plt
 import imgaug
 from tqdm import tqdm
@@ -62,14 +62,19 @@ class ECGModel(object):
         self.mask_sets = {train_masks: "train", test_masks: "test", val_masks:
             "validation"}
 
+        self.weights = self._computeWeights(train_masks.patches_set)
+
         self.train_set = tf.data.Dataset.zip(
-            (train_ecgs.patches_set, train_masks.patches_set)
+            (train_ecgs.patches_set, train_masks.patches_set,
+             train_masks.patches_set.map(lambda x: x * self.weights))
             )
         self.test_set = tf.data.Dataset.zip(
-            (test_ecgs.patches_set, test_masks.patches_set)
+            (test_ecgs.patches_set, test_masks.patches_set,
+             test_masks.patches_set.map(lambda x: x * self.weights))
             )
         self.val_set = tf.data.Dataset.zip(
-            (val_ecgs.patches_set, val_masks.patches_set)
+            (val_ecgs.patches_set, val_masks.patches_set,
+             val_masks.patches_set.map(lambda x: x * self.weights))
             )
 
         self.callbacks = []
@@ -80,8 +85,6 @@ class ECGModel(object):
         # segmentation_models.framework()
         else:
             self.model = self._getModel()
-
-        self.weights = self._computeWeights(train_masks.patches_set)
 
         self._compileModel(from_saved)
 
@@ -134,7 +137,9 @@ class ECGModel(object):
 
         # Computes the mean number of "1" pixels over the patches in the dataset
         for patch in tqdm(patches.take(-1)):
-            mask_pixel_mean += tf.reduce_sum(patch).numpy() / patch.numpy().size
+            mask_pixel_mean += tf.reduce_sum(patch).numpy() / tf.size(
+                patch, out_type=tf.int64
+                ).numpy()
             mask_count += 1
 
         print(f'Weight: {1 - (mask_pixel_mean / mask_count)}')
