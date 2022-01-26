@@ -89,7 +89,7 @@ class ECGModel(object):
 
         self.weights = self._computeWeights(train_masks.patches_set)
 
-        self._compileModel()
+        self._compileModel(from_saved, from_segmentation_models)
 
         self.histories = []
         self.val_frequencies = []
@@ -156,7 +156,7 @@ class ECGModel(object):
         return 1 - (mask_pixel_mean / mask_count)
 
 
-    def _compileModel(self):
+    def _compileModel(self, from_saved, from_segmentation_models):
         """
             Clears the keras session and compiles a model with Adam optimizer,
             Dice loss and Precision and Recall as metrics.
