@@ -219,10 +219,14 @@ class ECGModel(object):
         """
         # TODO: ADD change batch size
         if self.unet_git:
+            batch_size = self.train_set.shape[0]
+            self.train_set.unbatch()
             self.trainer.fit(
                 self.model, self.train_set, self.val_set, self.test_set, epochs=epochs,
-                validation_freq=validation_frequency, batch_size=None
+                validation_freq=validation_frequency, batch_size=batch_size
                 )
+
+            self.train_set.batch(batch_size)
         else:
             tf.keras.backend.set_value(self.model.optimizer.learning_rate, learning_rate)
 
