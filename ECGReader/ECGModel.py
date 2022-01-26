@@ -164,7 +164,9 @@ class ECGModel(object):
             self.model,
             segmentation_models.losses.DiceLoss(class_weights=[self.weights]),
             optimizer=tf.keras.optimizers.Adam(),
-            metrics=[metrics.MeanSquaredError()]
+            metrics=[metrics.MeanSquaredError()],
+            dice_coefficient=False, auc=False, mean_iou=False,
+            learning_rate=1e-3
             )
 
         self.callbacks.append(
