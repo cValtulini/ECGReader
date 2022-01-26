@@ -164,7 +164,7 @@ class ECGModel(object):
 
         self.model.compile(
             optimizer=tf.keras.optimizers.Adam(),
-            loss=unet.metrics.dice_coefficient,
+            loss=tf.keras.losses.MeanSquaredError(),
             metrics=[metrics.MeanSquaredError()]
             )
 
