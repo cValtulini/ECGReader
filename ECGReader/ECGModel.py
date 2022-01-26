@@ -107,7 +107,7 @@ class ECGModel(object):
         """
         model = unet.build_model(
             nx=self.patch_shape[0], ny=self.patch_shape[1], channels=3, num_classes=1,
-            layer_depth=5, filters_root=16, kernel_size=3, pool_size=2,
+            layer_depth=4, filters_root=32, kernel_size=3, pool_size=2,
             dropout_rate=0.1, padding='same', activation='sigmoid'
             )
 
