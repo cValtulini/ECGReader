@@ -111,7 +111,7 @@ class ECGModel(object):
             dropout_rate=0.1, padding='same', activation='relu'
             )
 
-            return model
+        return model
 
 
     def _getModelFromSegmentation(self):
