@@ -162,8 +162,9 @@ class ECGModel(object):
 
         unet.finalize_model(
             self.model,
-            loss=tf.keras.losses.BinaryCrossentropy(),
-            # loss=segmentation_models.losses.DiceLoss(class_weights=[self.weights]),
+            loss=segmentation_models.losses.DiceLoss(
+                class_weights=self.weights, per_image=True, smooth=1e-05
+                ),
             optimizer=tf.keras.optimizers.Adam(),
             metrics=[metrics.MeanSquaredError()],
             dice_coefficient=False, auc=False, mean_iou=False,
@@ -202,7 +203,7 @@ class ECGModel(object):
 
         self.trainer.fit(
             self.model, self.train_set.unbatch(), self.val_set.unbatch(),
-            self.test_set.unbatch(), epochs=epochs, class_weight={0: self.weights},
+            self.test_set.unbatch(), epochs=epochs,
             validation_freq=validation_frequency, batch_size=self.img_batch_size
             )
 
