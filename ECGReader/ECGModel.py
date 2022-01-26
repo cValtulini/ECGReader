@@ -142,7 +142,7 @@ class ECGModel(object):
         return 1 - (mask_pixel_mean / mask_count)
 
 
-    def _compileModel(self, from_saved, from_segmentation_models):
+    def _compileModel(self, from_saved):
         """
             Clears the keras session and compiles a model with Adam optimizer,
             Dice loss and Precision and Recall as metrics.
