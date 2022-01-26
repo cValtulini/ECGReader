@@ -91,7 +91,7 @@ class ECGModel(object):
 
         self._compileModel(from_saved)
 
-        self.trainer = unet.Trainer(checkpoint_callback=self.callbacks[-1])
+        # self.trainer = unet.Trainer(checkpoint_callback=self.callbacks[-1])
 
         self.histories = []
         self.val_frequencies = []
@@ -162,23 +162,23 @@ class ECGModel(object):
         """
         keras.backend.clear_session()
 
-        # self.model.compile(
-        #     optimizer=tf.keras.optimizers.Adam(),
-        #     loss=segmentation_models.losses.DiceLoss(class_weights=[self.weights]),
-        #     metrics=[metrics.MeanSquaredError()]
-        #     )
-
-        unet.finalize_model(
-            self.model,
-            loss=keras.losses.BinaryCrossentropy(),
-            # loss=segmentation_models.losses.DiceLoss(
-            #     class_weights=self.weights, per_image=True, smooth=1e-05
-            #     ),
+        self.model.compile(
             optimizer=tf.keras.optimizers.Adam(),
-            metrics=[metrics.MeanSquaredError()],
-            dice_coefficient=False, auc=False, mean_iou=False,
-            learning_rate=1e-3
+            loss=tf.keras.losses.BinaryCrossentropy(),
+            metrics=[metrics.MeanSquaredError()]
             )
+
+        # unet.finalize_model(
+        #     self.model,
+        #     loss=keras.losses.BinaryCrossentropy(),
+        #     # loss=segmentation_models.losses.DiceLoss(
+        #     #     class_weights=self.weights, per_image=True, smooth=1e-05
+        #     #     ),
+        #     optimizer=tf.keras.optimizers.Adam(),
+        #     metrics=[metrics.MeanSquaredError()],
+        #     dice_coefficient=False, auc=False, mean_iou=False,
+        #     learning_rate=1e-3
+        #     )
 
         self.callbacks.append(
                 keras.callbacks.ModelCheckpoint(
@@ -210,21 +210,21 @@ class ECGModel(object):
         """
         # TODO: ADD change batch size
 
-        self.trainer.fit(
-            self.model, self.train_set.unbatch(), self.val_set.unbatch(),
-            self.test_set.unbatch(), epochs=epochs,
-            validation_freq=validation_frequency, batch_size=self.img_batch_size
+        # self.trainer.fit(
+        #     self.model, self.train_set.unbatch(), self.val_set.unbatch(),
+        #     self.test_set.unbatch(), epochs=epochs,
+        #     validation_freq=validation_frequency, batch_size=self.img_batch_size
+        #     )
+
+        tf.keras.backend.set_value(self.model.optimizer.learning_rate, learning_rate)
+
+        history = self.model.fit(
+            self.train_set, epochs=epochs, callbacks=self.callbacks, shuffle=True,
+            validation_data=self.val_set, validation_freq=validation_frequency
             )
 
-        # tf.keras.backend.set_value(self.model.optimizer.learning_rate, learning_rate)
-        #
-        # history = self.model.fit(
-        #     self.train_set, epochs=epochs, callbacks=self.callbacks, shuffle=True,
-        #     validation_data=self.val_set, validation_freq=validation_frequency
-        #     )
-        #
-        # self.histories.append(history)
-        # self.val_frequencies.append(validation_frequency)
+        self.histories.append(history)
+        self.val_frequencies.append(validation_frequency)
 
 
     def evaluateAndVisualize(self, visualize=True, save=False, save_path=None):
