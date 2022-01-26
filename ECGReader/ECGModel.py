@@ -164,7 +164,7 @@ class ECGModel(object):
 
         self.model.compile(
             optimizer=tf.keras.optimizers.Adam(),
-            loss=tf.keras.losses.BinaryCrossentropy(),
+            loss=tf.keras.losses.MeanSquaredError(),
             metrics=[metrics.MeanSquaredError()]
             )
 
