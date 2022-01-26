@@ -1,7 +1,6 @@
 import os
 from sys import argv
 import numpy as np
-import pandas as pd
 import tensorflow as tf
 from tensorflow import keras
 from keras import layers, metrics
@@ -19,8 +18,7 @@ _string_mult = 100
 class ECGModel(object):
 
     def __init__(self, train_ecgs, train_masks, test_ecgs, test_masks,
-                 val_ecgs, val_masks, from_saved=False,
-                 from_segmentation_models=False, saved_model_path=None):
+                 val_ecgs, val_masks, from_saved=False, saved_model_path=None):
         """
         Creates an ECGModel object, containing the patch shape for ecg,
         two dictionaries of ECGDataset objects for ecgs and masks, with keys `train`,
@@ -52,14 +50,13 @@ class ECGModel(object):
             Flag, if true loads the model from a saved tensorflow model instead of
             creating it from scratch.
 
-        from_segmentation_model: bool = False
-
         saved_model_path : string
             The path of the tensorflow model to be loaded.
 
         """
 
         self.patch_shape = train_ecgs.patch_shape
+        self.img_batch_size = train_ecgs.patches_set.element_spec.shape[0]
 
         self.ecg_sets = {train_ecgs: "train", test_ecgs: "test", val_ecgs: "validation"}
         self.mask_sets = {train_masks: "train", test_masks: "test", val_masks:
@@ -79,19 +76,14 @@ class ECGModel(object):
 
         if from_saved:
             self.model = keras.models.load_model(saved_model_path)
-        elif from_segmentation_models:
-            segmentation_models.set_framework('tf.keras')
-            segmentation_models.framework()
-
-            self.model = self._getModelFromSegmentation()
+        # segmentation_models.set_framework('tf.keras')
+        # segmentation_models.framework()
         else:
             self.model = self._getModel()
 
         self.weights = self._computeWeights(train_masks.patches_set)
 
-        self.unet_git = False
-
-        self._compileModel(from_saved, from_segmentation_models)
+        self._compileModel(from_saved)
 
         self.trainer = unet.Trainer(checkpoint_callback=self.callbacks[-1])
 
@@ -118,17 +110,6 @@ class ECGModel(object):
         return model
 
 
-    def _getModelFromSegmentation(self):
-        model = segmentation_models.Unet(
-            backbone_name='inceptionv3',
-            input_shape=(self.patch_shape[0], self.patch_shape[1], 3), classes=1,
-            activation='sigmoid', encoder_weights=None,
-            decoder_block_type='upsampling', decoder_filters=(128, 64, 32, 16, 8)
-            )
-
-        return model
-
-
     def _computeWeights(self, patches):
         """
         Compute class weights based on a tf.data.Dataset object contents.
@@ -146,7 +127,7 @@ class ECGModel(object):
 
         """
         print('-' * _string_mult)
-        print('Computing weigths')
+        print('Computing weights')
 
         mask_pixel_mean = 0
         mask_count = 0
@@ -173,21 +154,18 @@ class ECGModel(object):
         """
         keras.backend.clear_session()
 
-        if from_saved or from_segmentation_models: #from_saved or from_segmentation_models:
-            self.model.compile(
-                optimizer=tf.keras.optimizers.Adam(),
-                loss=segmentation_models.losses.DiceLoss(class_weights=[self.weights]),
-                metrics=[metrics.MeanSquaredError()]
-                )
-        else:
-            unet.finalize_model(
-                self.model,
-                segmentation_models.losses.DiceLoss(class_weights=[self.weights]),
-                optimizer=tf.keras.optimizers.Adam(),
-                metrics=[metrics.MeanSquaredError()]
-                )
+        # self.model.compile(
+        #     optimizer=tf.keras.optimizers.Adam(),
+        #     loss=segmentation_models.losses.DiceLoss(class_weights=[self.weights]),
+        #     metrics=[metrics.MeanSquaredError()]
+        #     )
 
-            self.unet_git = True
+        unet.finalize_model(
+            self.model,
+            segmentation_models.losses.DiceLoss(class_weights=[self.weights]),
+            optimizer=tf.keras.optimizers.Adam(),
+            metrics=[metrics.MeanSquaredError()]
+            )
 
         self.callbacks.append(
                 keras.callbacks.ModelCheckpoint(
@@ -218,25 +196,22 @@ class ECGModel(object):
 
         """
         # TODO: ADD change batch size
-        if self.unet_git:
-            batch_size = self.train_set.shape[0]
-            self.train_set.unbatch()
-            self.trainer.fit(
-                self.model, self.train_set, self.val_set, self.test_set, epochs=epochs,
-                validation_freq=validation_frequency, batch_size=batch_size
-                )
 
-            self.train_set.batch(batch_size)
-        else:
-            tf.keras.backend.set_value(self.model.optimizer.learning_rate, learning_rate)
+        self.trainer.fit(
+            self.model, self.train_set.unbatch(), self.val_set.unbatch(),
+            self.test_set.unbatch(), epochs=epochs,
+            validation_freq=validation_frequency, batch_size=self.img_batch_size
+            )
 
-            history = self.model.fit(
-                self.train_set, epochs=epochs, callbacks=self.callbacks, shuffle=True,
-                validation_data=self.val_set, validation_freq=validation_frequency
-                )
-
-            self.histories.append(history)
-            self.val_frequencies.append(validation_frequency)
+        # tf.keras.backend.set_value(self.model.optimizer.learning_rate, learning_rate)
+        #
+        # history = self.model.fit(
+        #     self.train_set, epochs=epochs, callbacks=self.callbacks, shuffle=True,
+        #     validation_data=self.val_set, validation_freq=validation_frequency
+        #     )
+        #
+        # self.histories.append(history)
+        # self.val_frequencies.append(validation_frequency)
 
 
     def evaluateAndVisualize(self, visualize=True, save=False, save_path=None):
