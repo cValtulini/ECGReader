@@ -202,7 +202,7 @@ class ECGModel(object):
 
         self.trainer.fit(
             self.model, self.train_set.unbatch(), self.val_set.unbatch(),
-            self.test_set.unbatch(), epochs=epochs, class_weights=[self.weights],
+            self.test_set.unbatch(), epochs=epochs, class_weight=[self.weights],
             validation_freq=validation_frequency, batch_size=self.img_batch_size
             )
 
