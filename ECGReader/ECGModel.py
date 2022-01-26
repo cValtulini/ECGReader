@@ -1,10 +1,10 @@
 import os
 from sys import argv
 import numpy as np
-import pandas as pd
 import tensorflow as tf
 from tensorflow import keras
-from keras import layers, metrics, losses
+from keras import layers, metrics
+import unet
 import segmentation_models
 from matplotlib import pyplot as plt
 import imgaug
@@ -18,8 +18,7 @@ _string_mult = 100
 class ECGModel(object):
 
     def __init__(self, train_ecgs, train_masks, test_ecgs, test_masks,
-                 val_ecgs, val_masks, from_saved=False,
-                 from_segmentation_models=False, saved_model_path=None):
+                 val_ecgs, val_masks, from_saved=False, saved_model_path=None):
         """
         Creates an ECGModel object, containing the patch shape for ecg,
         two dictionaries of ECGDataset objects for ecgs and masks, with keys `train`,
@@ -51,14 +50,13 @@ class ECGModel(object):
             Flag, if true loads the model from a saved tensorflow model instead of
             creating it from scratch.
 
-        from_segmentation_modesl: bool = False
-
         saved_model_path : string
             The path of the tensorflow model to be loaded.
 
         """
 
         self.patch_shape = train_ecgs.patch_shape
+        self.img_batch_size = train_ecgs.patches_set.element_spec.shape[0]
 
         self.ecg_sets = {train_ecgs: "train", test_ecgs: "test", val_ecgs: "validation"}
         self.mask_sets = {train_masks: "train", test_masks: "test", val_masks:
@@ -78,24 +76,19 @@ class ECGModel(object):
 
         if from_saved:
             self.model = keras.models.load_model(saved_model_path)
-        elif from_segmentation_models:
-            segmentation_models.set_framework('tf.keras')
-            segmentation_models.framework()
-
-            self.model = segmentation_models.Unet(
-                backbone_name='vgg16', input_shape=(None, None, 3), classes=1,
-                activation='sigmoid', encoder_weights='imagenet', encoder_freeze=True,
-                decoder_block_type='upsampling', decoder_filters=(128, 64, 32, 16, 8)
-                )
+        # segmentation_models.set_framework('tf.keras')
+        # segmentation_models.framework()
         else:
             self.model = self._getModel()
 
         self.weights = self._computeWeights(train_masks.patches_set)
 
-        self._compileModel()
+        self._compileModel(from_saved)
 
-        self.history = None
-        self.history_list = []
+        self.trainer = unet.Trainer(checkpoint_callback=self.callbacks[-1])
+
+        self.histories = []
+        self.val_frequencies = []
 
 
     def _getModel(self):
@@ -108,62 +101,13 @@ class ECGModel(object):
             The model, to be compiled.
 
         """
-        layers_activation = "relu"
+        model = unet.build_model(
+            nx=self.patch_shape[0], ny=self.patch_shape[1], channels=3, num_classes=1,
+            layer_depth=4, filters_root=32, kernel_size=3, pool_size=2,
+            dropout_rate=0.1, padding='same', activation='sigmoid'
+            )
 
-        inputs = keras.Input(shape=self.patch_shape + (3,))
-
-        """
-        [First half of the network: down-sampling inputs]
-        """
-
-        # Entry block
-        x = layers.Conv2D(
-            16, 3,  # strides=2,
-            padding="same"
-            )(inputs)
-        x = layers.BatchNormalization()(x)
-        x = layers.Activation(layers_activation)(x)
-        previous_block_activation = [x]
-        x = layers.MaxPooling2D(3, strides=2, padding="same")(x)
-
-        # Blocks 1, 2, 3 are identical apart from the feature depth.
-        for filters in [32, 64, 128]:
-            x = layers.Activation(layers_activation)(x)
-            x = layers.SeparableConv2D(filters, 3, padding="same")(x)
-            x = layers.BatchNormalization()(x)
-
-            x = layers.Activation(layers_activation)(x)
-            x = layers.SeparableConv2D(filters, 3, padding="same")(x)
-            x = layers.BatchNormalization()(x)
-
-            previous_block_activation.append(x)  # Set aside next residual
-            x = layers.MaxPooling2D(3, strides=2, padding="same")(x)
-
-        """
-        [Second half of the network: up-sampling inputs]
-        """
-
-        print(previous_block_activation)
-        for i, filters in enumerate([128, 64, 32, 16]):
-            x = layers.Activation(layers_activation)(x)
-            x = layers.Conv2DTranspose(filters, 3, padding="same")(x)
-            x = layers.BatchNormalization()(x)
-
-            x = layers.Activation(layers_activation)(x)
-            x = layers.Conv2DTranspose(filters, 3, padding="same")(x)
-            x = layers.BatchNormalization()(x)
-            x = layers.UpSampling2D(2)(x)
-
-            # Project residual
-            residual = previous_block_activation[-(i + 1)]
-            x = layers.add([x, residual])  # Add back residual
-            # previous_block_activation = x  # Set aside next residual
-
-        # Add a per-pixel classification layer
-        outputs = layers.Conv2D(1, 3, activation="sigmoid", padding="same")(x)
-
-        # Define the model
-        return keras.Model(inputs, outputs)
+        return model
 
 
     def _computeWeights(self, patches):
@@ -183,7 +127,7 @@ class ECGModel(object):
 
         """
         print('-' * _string_mult)
-        print('Computing weigths')
+        print('Computing weights')
 
         mask_pixel_mean = 0
         mask_count = 0
@@ -198,7 +142,7 @@ class ECGModel(object):
         return 1 - (mask_pixel_mean / mask_count)
 
 
-    def _compileModel(self):
+    def _compileModel(self, from_saved):
         """
             Clears the keras session and compiles a model with Adam optimizer,
             Dice loss and Precision and Recall as metrics.
@@ -210,10 +154,22 @@ class ECGModel(object):
         """
         keras.backend.clear_session()
 
-        self.model.compile(
+        # self.model.compile(
+        #     optimizer=tf.keras.optimizers.Adam(),
+        #     loss=segmentation_models.losses.DiceLoss(class_weights=[self.weights]),
+        #     metrics=[metrics.MeanSquaredError()]
+        #     )
+
+        unet.finalize_model(
+            self.model,
+            loss=keras.losses.BinaryCrossentropy(),
+            # loss=segmentation_models.losses.DiceLoss(
+            #     class_weights=self.weights, per_image=True, smooth=1e-05
+            #     ),
             optimizer=tf.keras.optimizers.Adam(),
-            loss=segmentation_models.losses.DiceLoss(class_weights=[self.weights]),
-            metrics=[metrics.Precision(), metrics.Recall()]
+            metrics=[metrics.MeanSquaredError()],
+            dice_coefficient=False, auc=False, mean_iou=False,
+            learning_rate=1e-3
             )
 
         self.callbacks.append(
@@ -244,15 +200,23 @@ class ECGModel(object):
         None
 
         """
+        # TODO: ADD change batch size
 
-        tf.keras.backend.set_value(self.model.optimizer.learning_rate, learning_rate)
-
-        self.history = self.model.fit(
-            self.train_set, epochs=epochs, callbacks=self.callbacks, shuffle=True,
-            validation_data=self.val_set, validation_freq=validation_frequency
+        self.trainer.fit(
+            self.model, self.train_set.unbatch(), self.val_set.unbatch(),
+            self.test_set.unbatch(), epochs=epochs,
+            validation_freq=validation_frequency, batch_size=self.img_batch_size
             )
 
-        self.history_list.append(self.history)
+        # tf.keras.backend.set_value(self.model.optimizer.learning_rate, learning_rate)
+        #
+        # history = self.model.fit(
+        #     self.train_set, epochs=epochs, callbacks=self.callbacks, shuffle=True,
+        #     validation_data=self.val_set, validation_freq=validation_frequency
+        #     )
+        #
+        # self.histories.append(history)
+        # self.val_frequencies.append(validation_frequency)
 
 
     def evaluateAndVisualize(self, visualize=True, save=False, save_path=None):
@@ -349,7 +313,7 @@ p
                 plt.show()
 
 
-    def visualizeHistory(self, save=False, save_path=None):
+    def visualizeTrainingHistory(self, save=False, save_path=None):
         """
         Visualize training history of the model.
 
@@ -358,60 +322,44 @@ p
         save : bool = True
             Flag, indicates if the results have to be saved instead of only shown.
 
-        Returns
-        -------
         save_path : string
             The path where the figure is saved.
 
+        Returns
+        -------
+
         """
 
-        loss = self.history.history['loss'][-1]
-        acc = self.history.history['precision'][-1]
-        rec = self.history.history['recall'][-1]
+        loss = self.histories[-1].history['loss'][-1]
+        mse = self.histories[-1].history['mse'][-1]
         print(f'Loss: {loss}')
-        print(f'Accuracy: {acc}')
-        print(f'Recall: {rec}')
+        print(f'Accuracy: {mse}')
 
-        plot_loss = UNetModel.history.history['loss']
-        plot_prec = UNetModel.history.history['precision']
-        plot_rec = UNetModel.history.history['recall']
+        plot_loss = self.histories[-1].history['loss']
+        plot_mse = self.histories[-1].history['mse']
 
-        plot_val_loss = UNetModel.history.history['val_loss']
-        plot_val_prec = UNetModel.history.history['val_precision']
-        plot_val_rec = UNetModel.history.history['val_recall']
+        plot_val_loss = self.histories[-1].history['val_loss']
+        plot_val_mse = self.histories[-1].history['val_mse']
 
-        plt.figure(figsize=(8, 6))
-        plt.plot(plot_loss, label='training')
-        plt.plot(range(0, 100, 4), plot_val_loss, label='validation')
-        plt.legend()
+        epoch_n = self.histories[-1].epochs
 
-        plt.xlabel('epochs')
-        plt.ylabel('loss')
-        ax = plt.gca()
-        ax.set_ylim((0, 1))
+        historyPlot(
+            plot_loss, plot_val_loss, 'loss', range(0, epoch_n, self.val_frequencies[-1]),
+            save, save_path
+            )
+        historyPlot(
+            plot_mse, plot_val_mse, 'mse',
+            range(0, epoch_n, self.val_frequencies[-1]), save, save_path
+            )
 
-        plt.figure(figsize=(8, 6))
-        plt.plot(plot_prec, label='training')
-        plt.plot(range(0, 100, 4), plot_val_prec, label='validation')
-        plt.legend()
 
-        plt.xlabel('epochs')
-        plt.ylabel('precision')
-        ax = plt.gca()
-        ax.set_ylim((0, 1))
+    def visualizeHistory(self, save=False, save_path=None):
+        if len(self.histories) > 1:
+            for val_freq, history in zip(self.val_frequencies, self.histories):
+                pass
 
-        plt.figure(figsize=(8, 6))
-        plt.plot(plot_rec, label='training')
-        plt.plot(range(0, 100, 4), plot_val_rec, label='validation')
-        plt.legend()
-
-        plt.xlabel('epochs')
-        plt.ylabel('recall')
-        ax = plt.gca()
-        ax.set_ylim((0, 1))
-
-        if save:
-            plt.savefig(save_path + f'/history.png')
+        else:
+            self.visualizeTrainingHistory(save, save_path)
 
 
 def show(img, title=None):
@@ -421,6 +369,39 @@ def show(img, title=None):
         plt.title(title)
     plt.axis('off')
     plt.show()
+
+
+def historyPlot(training_metrics, validation_metrics, name, val_frequency_array,
+                save=False, save_path=None):
+    """
+
+    Parameters
+    ----------
+    training_metrics
+    validation_metrics
+    name
+    val_frequency_array
+    save
+    save_path
+
+    Returns
+    -------
+
+    """
+    plt.figure(figsize=(8, 6))
+    plt.plot(training_metrics, label='training')
+    plt.plot(
+        val_frequency_array, validation_metrics, label='validation'
+        )
+    plt.legend()
+
+    plt.xlabel('epochs')
+    plt.ylabel(name)
+    ax = plt.gca()
+    ax.set_ylim((0, 1))
+
+    if save:
+        plt.savefig(save_path + f'/history_{name}.png')
 
 
 if __name__ == '__main__':
@@ -500,6 +481,5 @@ if __name__ == '__main__':
 
     UNetModel = ECGModel(train_ecg_set, train_mask_set,
                          test_ecg_set, test_mask_set,
-                         val_ecg_set, val_mask_set,
-                         from_segmentation_models=True
+                         val_ecg_set, val_mask_set
                         )
