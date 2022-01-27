@@ -378,12 +378,36 @@ p
         if len(self.histories) > 1:
             loss_overall = []
             mse_overall = []
+            val_loss_overall = []
+            val_mse_overall = []
+            epochs_n = [np.array(0)]
             epoch_val_axis = []
 
             for val_freq, history in zip(self.val_frequencies, self.histories):
-                loss_overall.append(self.histories[-1].history['loss'][-1])
-                mse_overall.append(self.histories[-1].history['mean_squared_error'][-1])
+                loss_overall.append(np.array(history['loss']))
+                mse_overall.append(np.array(history['mean_squared_error']))
+                val_loss_overall.append(np.array(history['val_loss']))
+                val_mse_overall.append(np.array(history['val_mean_squared_error']))
+                epoch_val_axis.append(
+                    np.arange(
+                        epochs_n[-1][-1] + 1, epochs_n[-1][-1] + history.epoch + 1,
+                        val_freq
+                        )
+                    )
 
+            loss_overall = np.concatenate(loss_overall)
+            mse_overall = np.concatenate(mse_overall)
+            val_loss_overall = np.concatenate(val_loss_overall)
+            val_mse_overall = np.concatenate(val_mse_overall)
+            epoch_val_axis = np.concatenate(epoch_val_axis)
+
+            historyPlot(
+                loss_overall, val_loss_overall, 'loss', epoch_val_axis, save, save_path
+                )
+            historyPlot(
+                mse_overall, val_mse_overall, 'mean squared error', epoch_val_axis,
+                save, save_path
+                )
 
         else:
             self.visualizeTrainingHistory(save, save_path)
