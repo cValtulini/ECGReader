@@ -109,7 +109,7 @@ class ECGModel(object):
         """
         model = sm.Unet(
             input_shape=(self.patch_shape[0], self.patch_shape[1], 3),
-            encoder_weights=None, decoder_filters=(256, 128, 64, 32, 16, 8)
+            encoder_weights=None, decoder_filters=(256, 128, 64, 32, 16)
             )
 
         # model = unet.build_model(
@@ -376,8 +376,14 @@ p
 
     def visualizeHistory(self, save=False, save_path=None):
         if len(self.histories) > 1:
+            loss_overall = []
+            mse_overall = []
+            epoch_val_axis = []
+
             for val_freq, history in zip(self.val_frequencies, self.histories):
-                pass
+                loss_overall.append(self.histories[-1].history['loss'][-1])
+                mse_overall.append(self.histories[-1].history['mean_squared_error'][-1])
+
 
         else:
             self.visualizeTrainingHistory(save, save_path)
