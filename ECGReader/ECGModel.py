@@ -401,7 +401,7 @@ p
             mse_overall = np.concatenate(mse_overall)
             val_loss_overall = np.concatenate(val_loss_overall)
             val_mse_overall = np.concatenate(val_mse_overall)
-            epoch_val_axis = np.concatenate(epoch_val_axis)
+            epoch_val_axis = np.concatenate(epoch_val_axis)[:-1]
 
             historyPlot(
                 loss_overall, val_loss_overall, 'loss', epoch_val_axis, save,
