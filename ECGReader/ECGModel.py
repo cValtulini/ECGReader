@@ -380,17 +380,19 @@ p
             mse_overall = []
             val_loss_overall = []
             val_mse_overall = []
-            epochs_n = [np.array(0)]
-            epoch_val_axis = []
+            epoch_val_axis = [np.array([0])]
 
             for val_freq, history in zip(self.val_frequencies, self.histories):
-                loss_overall.append(np.array(history['loss']))
-                mse_overall.append(np.array(history['mean_squared_error']))
-                val_loss_overall.append(np.array(history['val_loss']))
-                val_mse_overall.append(np.array(history['val_mean_squared_error']))
+                loss_overall.append(np.array(history.history['loss']))
+                mse_overall.append(np.array(history.history['mean_squared_error']))
+                val_loss_overall.append(np.array(history.history['val_loss']))
+                val_mse_overall.append(
+                    np.array(history.history['val_mean_squared_error'])
+                    )
                 epoch_val_axis.append(
                     np.arange(
-                        epochs_n[-1][-1] + 1, epochs_n[-1][-1] + history.epoch + 1,
+                        epoch_val_axis[-1][-1] + 1,
+                        epoch_val_axis[-1][-1] + history.epoch[-1] + 1,
                         val_freq
                         )
                     )
@@ -402,7 +404,8 @@ p
             epoch_val_axis = np.concatenate(epoch_val_axis)
 
             historyPlot(
-                loss_overall, val_loss_overall, 'loss', epoch_val_axis, save, save_path
+                loss_overall, val_loss_overall, 'loss', epoch_val_axis, save,
+                save_path
                 )
             historyPlot(
                 mse_overall, val_mse_overall, 'mean squared error', epoch_val_axis,
@@ -449,7 +452,17 @@ def historyPlot(training_metrics, validation_metrics, name, val_frequency_array,
     plt.xlabel('epochs')
     plt.ylabel(name)
     ax = plt.gca()
-    ax.set_ylim((0, 1))
+
+    if isinstance(training_metrics, type(list())):
+        y_min = np.array(
+            [np.array(training_metrics).min(), np.array(validation_metrics).min()]
+            ).min()
+        y_max = np.array(training_metrics).max()
+    else: # assumes that otherwise it's a numpy.ndarray
+        y_min = np.array([training_metrics.min(), validation_metrics.min()]).min()
+        y_max = training_metrics.max()
+
+    ax.set_ylim((y_min, y_max))
 
     if save:
         plt.savefig(save_path + f'/history_{name}.png')
