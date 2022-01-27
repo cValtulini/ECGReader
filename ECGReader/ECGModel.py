@@ -392,7 +392,7 @@ p
                 epoch_val_axis.append(
                     np.arange(
                         epoch_val_axis[-1][-1] + 1,
-                        epoch_val_axis[-1][-1] + history.epoch[-1] + 1,
+                        epoch_val_axis[-1][-1] + history.epoch[-1] + 2,
                         val_freq
                         )
                     )
