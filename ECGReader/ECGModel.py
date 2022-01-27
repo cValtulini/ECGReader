@@ -57,7 +57,7 @@ class ECGModel(object):
 
         self.patch_shape = train_ecgs.patch_shape
         self.img_batch_size = train_ecgs.patches_set.element_spec.shape[0]
-
+        
         self.ecg_sets = {train_ecgs: "train", test_ecgs: "test", val_ecgs: "validation"}
         self.mask_sets = {train_masks: "train", test_masks: "test", val_masks:
             "validation"}
@@ -201,7 +201,7 @@ class ECGModel(object):
 
         """
         # TODO: ADD change batch size
-
+        
         self.trainer.fit(
             self.model, self.train_set.unbatch(), self.val_set.unbatch(),
             self.test_set.unbatch(), epochs=epochs,
