@@ -3,9 +3,9 @@ from sys import argv
 import numpy as np
 import tensorflow as tf
 from tensorflow import keras
-from keras import layers, metrics
-import unet
-import segmentation_models
+from keras import metrics
+# import unet
+import segmentation_models as sm
 from matplotlib import pyplot as plt
 import imgaug
 from tqdm import tqdm
@@ -62,8 +62,16 @@ class ECGModel(object):
         self.mask_sets = {train_masks: "train", test_masks: "test", val_masks:
             "validation"}
 
+        self.weights = self._computeWeights(train_masks.patches_set)
+
         self.train_set = tf.data.Dataset.zip(
-            (train_ecgs.patches_set, train_masks.patches_set)
+            (
+                train_ecgs.patches_set,
+                train_masks.patches_set
+                # train_masks.patches_set.map(
+                #     lambda x: tf.math.add((1 - x) * (1 - self.weights), x * self.weights)
+                #     )
+                )
             )
         self.test_set = tf.data.Dataset.zip(
             (test_ecgs.patches_set, test_masks.patches_set)
@@ -81,11 +89,9 @@ class ECGModel(object):
         else:
             self.model = self._getModel()
 
-        self.weights = self._computeWeights(train_masks.patches_set)
-
         self._compileModel(from_saved)
 
-        self.trainer = unet.Trainer(checkpoint_callback=self.callbacks[-1])
+        # self.trainer = unet.Trainer(checkpoint_callback=self.callbacks[-1])
 
         self.histories = []
         self.val_frequencies = []
@@ -101,11 +107,16 @@ class ECGModel(object):
             The model, to be compiled.
 
         """
-        model = unet.build_model(
-            nx=self.patch_shape[0], ny=self.patch_shape[1], channels=3, num_classes=1,
-            layer_depth=4, filters_root=32, kernel_size=3, pool_size=2,
-            dropout_rate=0.1, padding='same', activation='sigmoid'
+        model = sm.Unet(
+            input_shape=(self.patch_shape[0], self.patch_shape[1], 3),
+            encoder_weights=None, decoder_filters=(256, 128, 64, 32, 16)
             )
+
+        # model = unet.build_model(
+        #     nx=self.patch_shape[0], ny=self.patch_shape[1], channels=3, num_classes=1,
+        #     layer_depth=4, filters_root=32, kernel_size=3, pool_size=2,
+        #     dropout_rate=0.1, padding='same', activation='sigmoid'
+        #     )
 
         return model
 
@@ -134,7 +145,9 @@ class ECGModel(object):
 
         # Computes the mean number of "1" pixels over the patches in the dataset
         for patch in tqdm(patches.take(-1)):
-            mask_pixel_mean += tf.reduce_sum(patch).numpy() / patch.numpy().size
+            mask_pixel_mean += tf.reduce_sum(patch).numpy() / tf.size(
+                patch, out_type=tf.int64
+                ).numpy()
             mask_count += 1
 
         print(f'Weight: {1 - (mask_pixel_mean / mask_count)}')
@@ -154,23 +167,23 @@ class ECGModel(object):
         """
         keras.backend.clear_session()
 
-        # self.model.compile(
-        #     optimizer=tf.keras.optimizers.Adam(),
-        #     loss=segmentation_models.losses.DiceLoss(class_weights=[self.weights]),
-        #     metrics=[metrics.MeanSquaredError()]
-        #     )
-
-        unet.finalize_model(
-            self.model,
-            loss=keras.losses.BinaryCrossentropy(),
-            # loss=segmentation_models.losses.DiceLoss(
-            #     class_weights=self.weights, per_image=True, smooth=1e-05
-            #     ),
+        self.model.compile(
             optimizer=tf.keras.optimizers.Adam(),
-            metrics=[metrics.MeanSquaredError()],
-            dice_coefficient=False, auc=False, mean_iou=False,
-            learning_rate=1e-3
+            loss=sm.losses.DiceLoss(class_weights=[self.weights]),
+            metrics=[metrics.MeanSquaredError()]
             )
+
+        # unet.finalize_model(
+        #     self.model,
+        #     loss=keras.losses.BinaryCrossentropy(),
+        #     # loss=segmentation_models.losses.DiceLoss(
+        #     #     class_weights=self.weights, per_image=True, smooth=1e-05
+        #     #     ),
+        #     optimizer=tf.keras.optimizers.Adam(),
+        #     metrics=[metrics.MeanSquaredError()],
+        #     dice_coefficient=False, auc=False, mean_iou=False,
+        #     learning_rate=1e-3
+        #     )
 
         self.callbacks.append(
                 keras.callbacks.ModelCheckpoint(
@@ -179,7 +192,8 @@ class ECGModel(object):
             )
 
 
-    def fitModel(self, epochs=1, learning_rate=1e-3, validation_frequency=1):
+    def fitModel(self, epochs=1, learning_rate=1e-3, validation_frequency=1,
+                 batch_size=None):
         """
             Sets the learning rate for the model and calls the fit function,
             saving history results in the history attribute.
@@ -201,22 +215,29 @@ class ECGModel(object):
 
         """
         # TODO: ADD change batch size
-        
-        self.trainer.fit(
-            self.model, self.train_set.unbatch(), self.val_set.unbatch(),
-            self.test_set.unbatch(), epochs=epochs,
-            validation_freq=validation_frequency, batch_size=self.img_batch_size
-            )
 
-        # tf.keras.backend.set_value(self.model.optimizer.learning_rate, learning_rate)
-        #
-        # history = self.model.fit(
-        #     self.train_set, epochs=epochs, callbacks=self.callbacks, shuffle=True,
-        #     validation_data=self.val_set, validation_freq=validation_frequency
+        # self.trainer.fit(
+        #     self.model, self.train_set.unbatch(), self.val_set.unbatch(),
+        #     self.test_set.unbatch(), epochs=epochs,
+        #     validation_freq=validation_frequency, batch_size=self.img_batch_size
         #     )
-        #
-        # self.histories.append(history)
-        # self.val_frequencies.append(validation_frequency)
+
+        tf.keras.backend.set_value(self.model.optimizer.learning_rate, learning_rate)
+
+        if isinstance(batch_size, type(None)):
+            history = self.model.fit(
+                self.train_set, epochs=epochs, callbacks=self.callbacks, shuffle=True,
+                validation_data=self.val_set, validation_freq=validation_frequency
+                )
+        else:
+            history = self.model.fit(
+                self.train_set.unbatch().batch(batch_size, drop_remainder=True),
+                epochs=epochs, callbacks=self.callbacks, shuffle=True,
+                validation_data=self.val_set, validation_freq=validation_frequency
+                )
+
+        self.histories.append(history)
+        self.val_frequencies.append(validation_frequency)
 
 
     def evaluateAndVisualize(self, visualize=True, save=False, save_path=None):
@@ -331,15 +352,15 @@ p
         """
 
         loss = self.histories[-1].history['loss'][-1]
-        mse = self.histories[-1].history['mse'][-1]
+        mse = self.histories[-1].history['mean_squared_error'][-1]
         print(f'Loss: {loss}')
-        print(f'Accuracy: {mse}')
+        print(f'Mean Squared Error: {mse}')
 
         plot_loss = self.histories[-1].history['loss']
-        plot_mse = self.histories[-1].history['mse']
+        plot_mse = self.histories[-1].history['mean_squared_error']
 
         plot_val_loss = self.histories[-1].history['val_loss']
-        plot_val_mse = self.histories[-1].history['val_mse']
+        plot_val_mse = self.histories[-1].history['val_mean_squared_error']
 
         epoch_n = self.histories[-1].epochs
 
@@ -348,15 +369,21 @@ p
             save, save_path
             )
         historyPlot(
-            plot_mse, plot_val_mse, 'mse',
+            plot_mse, plot_val_mse, 'mean squared error',
             range(0, epoch_n, self.val_frequencies[-1]), save, save_path
             )
 
 
     def visualizeHistory(self, save=False, save_path=None):
         if len(self.histories) > 1:
+            loss_overall = []
+            mse_overall = []
+            epoch_val_axis = []
+
             for val_freq, history in zip(self.val_frequencies, self.histories):
-                pass
+                loss_overall.append(self.histories[-1].history['loss'][-1])
+                mse_overall.append(self.histories[-1].history['mean_squared_error'][-1])
+
 
         else:
             self.visualizeTrainingHistory(save, save_path)
@@ -426,7 +453,7 @@ if __name__ == '__main__':
     ecg_cols = 2
 
     # Number of patches for each lead on the time axis (width)
-    t_patch_lead = 8
+    t_patch_lead = 10
 
     # original_mask_shape = (3149, 6102)
     # original_ecg_shape = (4410, 9082)
