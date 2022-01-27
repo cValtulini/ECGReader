@@ -362,7 +362,7 @@ p
         plot_val_loss = self.histories[-1].history['val_loss']
         plot_val_mse = self.histories[-1].history['val_mean_squared_error']
 
-        epoch_n = self.histories[-1].epochs
+        epoch_n = self.histories[-1].epoch[-1] + 1
 
         historyPlot(
             plot_loss, plot_val_loss, 'loss', range(0, epoch_n, self.val_frequencies[-1]),
