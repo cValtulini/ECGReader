@@ -352,15 +352,15 @@ p
         """
 
         loss = self.histories[-1].history['loss'][-1]
-        mse = self.histories[-1].history['mse'][-1]
+        mse = self.histories[-1].history['mean_squared_error'][-1]
         print(f'Loss: {loss}')
-        print(f'Accuracy: {mse}')
+        print(f'Mean Squared Error: {mse}')
 
         plot_loss = self.histories[-1].history['loss']
-        plot_mse = self.histories[-1].history['mse']
+        plot_mse = self.histories[-1].history['mean_squared_error']
 
         plot_val_loss = self.histories[-1].history['val_loss']
-        plot_val_mse = self.histories[-1].history['val_mse']
+        plot_val_mse = self.histories[-1].history['val_mean_squared_error']
 
         epoch_n = self.histories[-1].epochs
 
@@ -369,7 +369,7 @@ p
             save, save_path
             )
         historyPlot(
-            plot_mse, plot_val_mse, 'mse',
+            plot_mse, plot_val_mse, 'mean squared error',
             range(0, epoch_n, self.val_frequencies[-1]), save, save_path
             )
 
@@ -447,7 +447,7 @@ if __name__ == '__main__':
     ecg_cols = 2
 
     # Number of patches for each lead on the time axis (width)
-    t_patch_lead = 8
+    t_patch_lead = 10
 
     # original_mask_shape = (3149, 6102)
     # original_ecg_shape = (4410, 9082)
