@@ -380,7 +380,7 @@ p
             mse_overall = []
             val_loss_overall = []
             val_mse_overall = []
-            epoch_val_axis = [np.array([0])]
+            epoch_val_axis = [np.array([1])]
 
             for val_freq, history in zip(self.val_frequencies, self.histories):
                 loss_overall.append(np.array(history.history['loss']))
@@ -396,7 +396,7 @@ p
                         val_freq
                         )
                     )
-
+            
             loss_overall = np.concatenate(loss_overall)
             mse_overall = np.concatenate(mse_overall)
             val_loss_overall = np.concatenate(val_loss_overall)
