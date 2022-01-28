@@ -151,7 +151,7 @@ class ECGModel(object):
         return 1 - (mask_pixel_mean / mask_count)
 
 
-    def _compileModel(self, from_saved):
+    def _compileModel(self):
         """
             Clears the keras session and compiles a model with Adam optimizer,
             Dice loss and Precision and Recall as metrics.
@@ -193,7 +193,8 @@ class ECGModel(object):
         validation_frequency : int = 1
             Number of training epochs before performing validation.
 
-        batch_size
+        batch_size : int = None
+            Size of a training batch
 
         Returns
         -------
@@ -203,6 +204,7 @@ class ECGModel(object):
 
         tf.keras.backend.set_value(self.model.optimizer.learning_rate, learning_rate)
 
+        # If batch_size is None uses the Dataset as is, otherwise
         if isinstance(batch_size, type(None)):
             history = self.model.fit(
                 self.train_set, epochs=epochs, callbacks=self.callbacks, shuffle=True,
@@ -315,7 +317,7 @@ p
 
     def visualizeSingleTrainingHistory(self, save=False, save_path=None):
         """
-        Visualize training history of the model.
+        Visualize the training history for the last training session of the model.
 
         Parameters
         ----------
@@ -327,6 +329,7 @@ p
 
         Returns
         -------
+        : None
 
         """
 
@@ -354,6 +357,22 @@ p
 
 
     def visualizeHistory(self, save=False, save_path=None):
+        """
+        Visualizes overall training history when calling fitModel multiple times.
+
+        Parameters
+        ----------
+        save : bool = False
+            Flag, indicates if the resulting plots have to be saved or not.
+
+        save_path : string = None
+            The path to the save location for the plots.
+
+        Returns
+        -------
+        : None
+
+        """
         if len(self.histories) > 1:
             loss_overall = []
             mse_overall = []
@@ -406,27 +425,43 @@ def show(img, title=None):
     plt.show()
 
 
-def historyPlot(training_metrics, validation_metrics, name, val_frequency_array,
+def historyPlot(training_metric, validation_metric, name, val_frequency_array,
                 save=False, save_path=None):
     """
+    Plots a training metric and a validation metric on a single graphic, evaluating the
+    range for the y-axis from the minimum value between the two, with a maximum value
+    based on the training metrics maximum.
 
     Parameters
     ----------
-    training_metrics
-    validation_metrics
-    name
-    val_frequency_array
-    save
-    save_path
+    training_metric : List or numpy.ndarray
+        The values of the tracked training metric to show
+
+    validation_metric : List or numpy.ndarray
+        The values of the tracked validation metric to show
+
+    name : string
+        The label for the y-axis
+
+    val_frequency_array : List or numpy.ndarray
+        x-axis for the validation metric
+
+    save : bool = False
+        Flag, indicates if the resulting plots have to be saved or not.
+
+    save_path : string = None
+        The path to the save location for the plots.
 
     Returns
     -------
+    : None
 
     """
+
     plt.figure(figsize=(8, 6))
-    plt.plot(training_metrics, label='training')
+    plt.plot(training_metric, label='training')
     plt.plot(
-        val_frequency_array, validation_metrics, label='validation'
+        val_frequency_array, validation_metric, label='validation'
         )
     plt.legend()
 
@@ -434,14 +469,14 @@ def historyPlot(training_metrics, validation_metrics, name, val_frequency_array,
     plt.ylabel(name)
     ax = plt.gca()
 
-    if isinstance(training_metrics, type(list())):
+    if isinstance(training_metric, type(list())):
         y_min = np.array(
-            [np.array(training_metrics).min(), np.array(validation_metrics).min()]
+            [np.array(training_metric).min(), np.array(validation_metric).min()]
             ).min()
-        y_max = np.array(training_metrics).max()
+        y_max = np.array(training_metric).max()
     else: # assumes that otherwise it's a numpy.ndarray
-        y_min = np.array([training_metrics.min(), validation_metrics.min()]).min()
-        y_max = training_metrics.max()
+        y_min = np.array([training_metric.min(), validation_metric.min()]).min()
+        y_max = training_metric.max()
 
     ax.set_ylim((y_min, y_max))
 
