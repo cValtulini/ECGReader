@@ -4,7 +4,6 @@ import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 from keras import metrics
-# import unet
 import segmentation_models as sm
 from matplotlib import pyplot as plt
 import imgaug
@@ -68,8 +67,12 @@ class ECGModel(object):
             (
                 train_ecgs.patches_set,
                 train_masks.patches_set
+                # If weights are to be passed to model.fit() instead that to the loss
+                # function. This is the case when using losses from keras.losses
                 # train_masks.patches_set.map(
-                #     lambda x: tf.math.add((1 - x) * (1 - self.weights), x * self.weights)
+                #     lambda x: tf.math.add(
+                #         (1 - x) * (1 - self.weights), x * self.weights
+                #         )
                 #     )
                 )
             )
@@ -82,16 +85,15 @@ class ECGModel(object):
 
         self.callbacks = []
 
+        sm.set_framework('tf.keras')
+        sm.framework()
+
         if from_saved:
             self.model = keras.models.load_model(saved_model_path)
-        # segmentation_models.set_framework('tf.keras')
-        # segmentation_models.framework()
         else:
             self.model = self._getModel()
 
         self._compileModel(from_saved)
-
-        # self.trainer = unet.Trainer(checkpoint_callback=self.callbacks[-1])
 
         self.histories = []
         self.val_frequencies = []
@@ -111,12 +113,6 @@ class ECGModel(object):
             input_shape=(self.patch_shape[0], self.patch_shape[1], 3),
             encoder_weights=None, decoder_filters=(256, 128, 64, 32, 16)
             )
-
-        # model = unet.build_model(
-        #     nx=self.patch_shape[0], ny=self.patch_shape[1], channels=3, num_classes=1,
-        #     layer_depth=4, filters_root=32, kernel_size=3, pool_size=2,
-        #     dropout_rate=0.1, padding='same', activation='sigmoid'
-        #     )
 
         return model
 
@@ -173,18 +169,6 @@ class ECGModel(object):
             metrics=[metrics.MeanSquaredError()]
             )
 
-        # unet.finalize_model(
-        #     self.model,
-        #     loss=keras.losses.BinaryCrossentropy(),
-        #     # loss=segmentation_models.losses.DiceLoss(
-        #     #     class_weights=self.weights, per_image=True, smooth=1e-05
-        #     #     ),
-        #     optimizer=tf.keras.optimizers.Adam(),
-        #     metrics=[metrics.MeanSquaredError()],
-        #     dice_coefficient=False, auc=False, mean_iou=False,
-        #     learning_rate=1e-3
-        #     )
-
         self.callbacks.append(
                 keras.callbacks.ModelCheckpoint(
                     'unet_model', save_best_only=True
@@ -209,18 +193,13 @@ class ECGModel(object):
         validation_frequency : int = 1
             Number of training epochs before performing validation.
 
+        batch_size
+
         Returns
         -------
         None
 
         """
-        # TODO: ADD change batch size
-
-        # self.trainer.fit(
-        #     self.model, self.train_set.unbatch(), self.val_set.unbatch(),
-        #     self.test_set.unbatch(), epochs=epochs,
-        #     validation_freq=validation_frequency, batch_size=self.img_batch_size
-        #     )
 
         tf.keras.backend.set_value(self.model.optimizer.learning_rate, learning_rate)
 
@@ -334,7 +313,7 @@ p
                 plt.show()
 
 
-    def visualizeTrainingHistory(self, save=False, save_path=None):
+    def visualizeSingleTrainingHistory(self, save=False, save_path=None):
         """
         Visualize training history of the model.
 
@@ -391,8 +370,10 @@ p
                     )
                 epoch_val_axis.append(
                     np.arange(
-                        epoch_val_axis[-1][-1] + 1,
-                        epoch_val_axis[-1][-1] + history.epoch[-1] + 1,
+                        epoch_val_axis[-1][-1] + val_freq,
+                        # We'd want epoch + 1 but history.epoch starts from 0 and goes
+                        # to epochs - 1, we add one more.
+                        epoch_val_axis[-1][-1] + history.epoch[-1] + 2,
                         val_freq
                         )
                     )
@@ -401,7 +382,7 @@ p
             mse_overall = np.concatenate(mse_overall)
             val_loss_overall = np.concatenate(val_loss_overall)
             val_mse_overall = np.concatenate(val_mse_overall)
-            epoch_val_axis = np.concatenate(epoch_val_axis)
+            epoch_val_axis = np.concatenate(epoch_val_axis)[1:] - 1
 
             historyPlot(
                 loss_overall, val_loss_overall, 'loss', epoch_val_axis, save,
@@ -413,7 +394,7 @@ p
                 )
 
         else:
-            self.visualizeTrainingHistory(save, save_path)
+            self.visualizeSingleTrainingHistory(save, save_path)
 
 
 def show(img, title=None):
@@ -496,8 +477,8 @@ if __name__ == '__main__':
     # original_ecg_shape = (4410, 9082)
 
     # We define mask and ecg overall shape based on patches parameters
-    mask_patch_shape = (256, 128)
-    ecg_patch_shape = (256, 128)
+    mask_patch_shape = (256, 256)
+    ecg_patch_shape = (256, 256)
 
     mask_stride = (mask_patch_shape[0], mask_patch_shape[1] // 2)
     ecg_stride = (ecg_patch_shape[0] // 2, ecg_patch_shape[1] // 2)
