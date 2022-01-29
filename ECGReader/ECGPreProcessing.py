@@ -18,16 +18,16 @@ def plotXML(tracks, fullname, sim, destination_path):
     Parameters
     ----------
     tracks : list 
-        xml tracks to plot
+        XML tracks to plot.
 
     fullname: string
-        full path to xml file
+        Full path to XML file.
 
     sim : bool
-        boolean variable that tells if file is simultaneous
+        Boolean variable that tells if file is simultaneous.
 
     destination_path: string 
-        for saving the plot
+        For saving the plot.
 
 
     Returns
@@ -110,14 +110,14 @@ def masksPlotterXML(source_png_path, source_xml_path, destination_path):
     Parameters
     ----------
     source_png_path : string
-        source path for getting the file names of pdf captures
-        that must contain the seq or sim subfolder
+        Source path for getting the file names of pdf captures
+        that must contain the seq or sim subfolder.
 
     source_xml_path: string
-        source path for getting the corresponding xml files
+        Source path for getting the corresponding xml files.
 
     destination_path: string
-        path for saving the plots
+        Path for saving the plots.
 
     Returns
     -------
