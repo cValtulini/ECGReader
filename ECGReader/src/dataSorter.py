@@ -219,8 +219,7 @@ def renamePDFFiles(path):
                     for i in range(input_pdf.numPages):
                         # We have a file with a blank page at number 14, that is
                         # skipped as follows
-                        # TODO: This seems to not work properly, blank page was saved
-                        if i < 14:
+                        if i < 13:
                             output = PdfFileWriter()
                             output.addPage(input_pdf.getPage(i))
                             split_name = names[i].split(',')
@@ -232,7 +231,7 @@ def renamePDFFiles(path):
                             with open(path + '/' + new_filename, 'wb') as outputStream:
                                 output.write(outputStream)
 
-                        if i > 14:
+                        if i > 13:
                             output = PdfFileWriter()
                             output.addPage(input_pdf.getPage(i))
                             split_name = names[i - 1].split(',')
