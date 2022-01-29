@@ -17,13 +17,17 @@ def plotXML(tracks, fullname, sim, destination_path):
 
     Parameters
     ----------
-    tracks : xml tracks to plot
+    tracks : list 
+        xml tracks to plot
 
-    fullname: full path to xml file
+    fullname: string
+        full path to xml file
 
-    sim : boolean variable that tells if file is simultaneous
+    sim : bool
+        boolean variable that tells if file is simultaneous
 
-    destination_path: for saving the plot
+    destination_path: string 
+        for saving the plot
 
 
     Returns
