@@ -6,7 +6,7 @@ import SPxml
 import numpy as np
 from matplotlib import pyplot as plt
 from imgaug import augmenters as iaa
-
+import pandas as pd
 
 _string_mult = 100
 
@@ -156,6 +156,7 @@ def masksPlotterXML(source_png_path, source_xml_path, destination_path):
             for i in range(len(datas)):
                 tracks.append(np.array(datas[i]['data']))
                 tracks[i] = tracks[i][:2460] - np.around(tracks[i][:2460].mean(), 1)
+                tracks[i] = pd.Series(tracks[i]).rolling(window=10).mean()
 
         # In case of sequential ECG we get the first 2460 samples for the first 6 tracks, and then the
         # samples from 2500 to 5000 for the others.
@@ -168,6 +169,7 @@ def masksPlotterXML(source_png_path, source_xml_path, destination_path):
                     tracks[i] = tracks[i][2500:5000] - np.around(
                         tracks[i][2500:5000].mean(), 1
                         )
+                tracks[i] = pd.Series(tracks[i]).rolling(window=10).mean()
 
         plotXML(tracks, xml, sim, destination_path)
 
