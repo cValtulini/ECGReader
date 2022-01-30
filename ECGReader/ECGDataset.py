@@ -240,7 +240,7 @@ class ECGDataset(object):
             num_parallel_calls=tf.data.AUTOTUNE
             )
 
-        # Computes the mask from mask patches: since the image is downsampled we don't
+        # Computes the mask from mask patches: since the image is down-sampled we don't
         # have values equal to 0 or 255 anymore, then we create the binary image
         # setting a threshold and then casting to float.
         if binarize:

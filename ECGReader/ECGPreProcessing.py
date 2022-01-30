@@ -151,15 +151,16 @@ def masksPlotterXML(source_png_path, source_xml_path, destination_path):
         datas = SPxml.getLeads(xml)
         tracks = []
 
-        # In case of simultaneous ECG we get the samples for the first 2460 samples for each track.
+        # In case of simultaneous ECG we get the samples for the first 2460 samples for
+        # each track.
         if sim:
             for i in range(len(datas)):
                 tracks.append(np.array(datas[i]['data']))
                 tracks[i] = tracks[i][:2460] - np.around(tracks[i][:2460].mean(), 1)
                 tracks[i] = pd.Series(tracks[i]).rolling(window=10).mean()
 
-        # In case of sequential ECG we get the first 2460 samples for the first 6 tracks, and then the
-        # samples from 2500 to 5000 for the others.
+        # In case of sequential ECG we get the first 2460 samples for the first 6 tracks,
+        # and then the samples from 2500 to 5000 for the others.
         else:
             for i in range(len(datas)):
                 tracks.append(np.array(datas[i]['data']))
