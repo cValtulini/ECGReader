@@ -93,7 +93,7 @@ class ECGModel(object):
         else:
             self.model = self._getModel()
 
-        self._compileModel(from_saved)
+        self._compileModel()
 
         self.histories = []
         self.val_frequencies = []
