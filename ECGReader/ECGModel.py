@@ -56,7 +56,7 @@ class ECGModel(object):
 
         self.patch_shape = train_ecgs.patch_shape
         self.img_batch_size = train_ecgs.patches_set.element_spec.shape[0]
-
+        
         self.ecg_sets = {train_ecgs: "train", test_ecgs: "test", val_ecgs: "validation"}
         self.mask_sets = {train_masks: "train", test_masks: "test", val_masks:
             "validation"}
@@ -378,7 +378,7 @@ p
             mse_overall = []
             val_loss_overall = []
             val_mse_overall = []
-            epoch_val_axis = [np.array([0])]
+            epoch_val_axis = [np.array([1])]
 
             for val_freq, history in zip(self.val_frequencies, self.histories):
                 loss_overall.append(np.array(history.history['loss']))
@@ -396,7 +396,7 @@ p
                         val_freq
                         )
                     )
-
+            
             loss_overall = np.concatenate(loss_overall)
             mse_overall = np.concatenate(mse_overall)
             val_loss_overall = np.concatenate(val_loss_overall)
