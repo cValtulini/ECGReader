@@ -6,4 +6,5 @@ numpy==1.21.5
 opencv-contrib-python==4.5.5.62
 pdfplumber==0.6.0
 pypdf2==1.26.0
+segmentation-models==1.0.1
 tensorflow==2.7.0
